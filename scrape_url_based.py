@@ -199,11 +199,16 @@ class UrlBasedPropertyScraper:
             for i, element in enumerate(property_elements, 1):
                 try:
                     # Link kinyerése
-                    link_element = element if element.tag_name.lower() == 'a' else await element.query_selector("a[href*='/ingatlan/']")
-                    if not link_element:
-                        continue
-                        
+                    link_element = element
                     href = await link_element.get_attribute("href")
+                    
+                    # Ha nincs href az elemen, keressünk link-et benne
+                    if not href:
+                        link_element = await element.query_selector("a[href*='/ingatlan/']")
+                        if not link_element:
+                            continue
+                        href = await link_element.get_attribute("href")
+                        
                     if not href:
                         continue
                         
