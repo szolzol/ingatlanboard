@@ -26,7 +26,25 @@ st.set_page_config(
 def load_data():
     """Adatok betöltése"""
     try:
-        df = pd.read_csv("ingatlan_reszletes_20250819_123937.csv")
+        # Megpróbáljuk betölteni a fájlt
+        import os
+        csv_path = "ingatlan_reszletes_20250819_123937.csv"
+        if not os.path.exists(csv_path):
+            st.error(f"❌ Az adatfájl nem található: {csv_path}")
+            st.info("📁 Elérhető fájlok a könyvtárban:")
+            for file in os.listdir("."):
+                if file.endswith(".csv"):
+                    st.write(f"- {file}")
+            st.stop()
+            
+        df = pd.read_csv(csv_path)
+        
+        # Ellenőrizzük hogy van-e adat
+        if df.empty:
+            st.error("❌ Az adatfájl üres!")
+            st.stop()
+        
+        st.info(f"✅ Sikeresen betöltve: {len(df)} ingatlan")
         
         # Numerikus ár konvertálás - tisztítjuk a speciális karaktereket
         df['ar_szam'] = df['nm_ar'].str.extract(r'([0-9,\s\xa0]+)').iloc[:, 0]
