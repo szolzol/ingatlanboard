@@ -671,79 +671,22 @@ class DetailedPropertyScraper:
         except:
             pass
 
-def get_search_url_with_limit():
-    """Bekéri a felhasználótól a keresési URL-t és hozzáadja a limit paramétert"""
-    print("🔗 INGATLAN KERESÉSI URL MEGADÁSA")
-    print("="*50)
-    print("💡 Példa URL:")
-    print("   https://ingatlan.com/szukites/elado+lakas+kobanyi-ujhegy")
-    print("   https://ingatlan.com/szukites/elado+haz+budapest")
-    print("")
-    
-    while True:
-        search_url = input("📍 Add meg a keresési URL-t: ").strip()
-        
-        if not search_url:
-            print("❌ Kérlek add meg az URL-t!")
-            continue
-            
-        if not search_url.startswith("https://ingatlan.com"):
-            print("❌ Csak ingatlan.com URL-eket támogatunk!")
-            continue
-            
-        # Limit paraméter hozzáadása
-        if "?" in search_url:
-            # Már vannak paraméterek
-            enhanced_url = f"{search_url}&limit=300"
-        else:
-            # Nincsenek paraméterek
-            enhanced_url = f"{search_url}?limit=300"
-            
-        print(f"✅ Továbbfejlesztett URL: {enhanced_url}")
-        print(f"🎯 Maximum találatok: 300 ingatlan")
-        
-        return enhanced_url
-
 async def main():
-    """Főfüggvény dinamikus URL alapú scraping-hez"""
-    print("🏠 RÉSZLETES INGATLAN ADATOK SCRAPER")
+    """Főfüggvény az 57 ingatlanos clean CSV feldolgozásához"""
+    print("🏠 RÉSZLETES INGATLAN ADATOK + EMELET + HIRDETŐ TÍPUS")
     print("="*60)
     
-    # URL bekérése a felhasználótól
-    search_url = get_search_url_with_limit()
+    # A clean CSV fájl használata
+    csv_file = "ingatlan_final_clean_20250819_113758.csv"
     
-    print(f"\n📁 Keresési URL: {search_url}")
-    print(f"🎯 Feldolgozási limit: maximum 300 ingatlan")
-    
+    print(f"📁 Forrás CSV: {csv_file}")
+    print(f"🎯 Feldolgozandó: mind az 57 ingatlan")
     
     scraper = DetailedPropertyScraper()
     
     try:
-        # Előbb át kell írnunk a scraper-t, hogy URL-t dolgozzon fel CSV helyett
-        print(f"\n⚠️  Jelenleg a scraper CSV fájlból dolgozik.")
-        print(f"🔧 Szükséges módosítás: URL-alapú scraping implementálása")
-        print(f"💡 Alternatíva: Használd az eredeti list scraper-t először")
-        print(f"   majd utána ezt a detail scraper-t a kapott CSV-re")
-        
-        # Ideiglenesen CSV alapú működés megtartása
-        print(f"\n📋 Elérhető CSV fájlok:")
-        import os
-        csv_files = [f for f in os.listdir('.') if f.endswith('.csv') and 'ingatlan' in f]
-        for i, file in enumerate(csv_files, 1):
-            print(f"   {i}. {file}")
-        
-        if csv_files:
-            choice = input(f"\n📝 Válassz CSV fájlt (1-{len(csv_files)}) vagy nyomj ENTER-t a legutóbbihoz: ").strip()
-            
-            if choice.isdigit() and 1 <= int(choice) <= len(csv_files):
-                csv_file = csv_files[int(choice)-1]
-            else:
-                csv_file = max(csv_files, key=lambda x: os.path.getmtime(x))  # Legújabb fájl
-                
-            print(f"✅ Kiválasztva: {csv_file}")
-            
-            # URL-ek feldolgozása - CSV alapon
-            detailed_data = await scraper.process_csv_urls(csv_file, max_properties=300, start_from=0)
+        # URL-ek feldolgozása - mind az 57 ingatlan
+        detailed_data = await scraper.process_csv_urls(csv_file, max_properties=57, start_from=0)
         
         if detailed_data:
             # CSV mentése

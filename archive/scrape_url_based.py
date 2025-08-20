@@ -173,10 +173,10 @@ class UrlBasedPropertyScraper:
         properties = []
         
         try:
-            # Ingatlan kártya selectorok
+            # Ingatlan kártya selectorok - debug alapján javítva
             property_card_selectors = [
-                ".listing-card",
-                ".property-card", 
+                ".listing-card",  # Ez működik a debug alapján
+                ".listing__card", 
                 ".result-item",
                 ".search-result-item",
                 "a[href*='/ingatlan/']"
@@ -224,81 +224,74 @@ class UrlBasedPropertyScraper:
                         'link': full_url
                     }
                     
-                    # Cím
+                    # Cím kinyerése - javított megközelítés
                     try:
-                        title_selectors = [".listing-title", ".property-title", "h3", "h4", ".title"]
-                        for sel in title_selectors:
-                            title_elem = await element.query_selector(sel)
-                            if title_elem:
-                                property_data['cim'] = await title_elem.inner_text()
+                        # Keressünk linkeket a listing card-ban
+                        link_elements = await element.query_selector_all('a[href*="/ingatlan/"]')
+                        for link_elem in link_elements:
+                            title_text = await link_elem.inner_text()
+                            if title_text and len(title_text.strip()) > 5:  # Legalább 5 karakter
+                                property_data['cim'] = title_text.strip()
                                 break
                         else:
                             property_data['cim'] = ""
                     except:
                         property_data['cim'] = ""
                     
-                    # Ár
+                    # Ár kinyerése - javított megközelítés  
                     try:
-                        price_selectors = [".price", ".listing-price", ".property-price", "[data-testid='price']"]
-                        for sel in price_selectors:
-                            price_elem = await element.query_selector(sel)
-                            if price_elem:
-                                property_data['teljes_ar'] = await price_elem.inner_text()
+                        # Keressük az ár szövegeket tartalmazó elemeket
+                        all_elements = await element.query_selector_all('*')
+                        for elem in all_elements:
+                            text = await elem.inner_text()
+                            if text and ('ft' in text.lower() or 'millió' in text.lower() or re.search(r'\d+\s*M\s*Ft', text)):
+                                property_data['teljes_ar'] = text.strip()
                                 break
                         else:
                             property_data['teljes_ar'] = ""
                     except:
                         property_data['teljes_ar'] = ""
                     
-                    # Terület és szobaszám
+                    # Terület kinyerése - javított megközelítés
                     try:
-                        details_selectors = [".property-details", ".listing-details", ".details", ".params"]
-                        details_text = ""
-                        for sel in details_selectors:
-                            details_elem = await element.query_selector(sel)
-                            if details_elem:
-                                details_text = await details_elem.inner_text()
+                        all_elements = await element.query_selector_all('*')
+                        for elem in all_elements:
+                            text = await elem.inner_text()
+                            if text and ('m²' in text or 'm2' in text) and len(text) < 20:  # Rövid szöveg
+                                property_data['terulet'] = text.strip()
                                 break
-                        
-                        # Terület kinyerése (pl. "65 m²")
-                        area_match = re.search(r'(\d+)\s*m²', details_text)
-                        property_data['terulet'] = f"{area_match.group(1)} m²" if area_match else ""
-                        
-                        # Szobaszám (pl. "3 szoba")
-                        room_match = re.search(r'(\d+)\s*szoba', details_text)
-                        property_data['szobak'] = room_match.group(1) if room_match else ""
-                        
-                        # Nm ár számítása ha van terület és ár
-                        if property_data['teljes_ar'] and property_data['terulet']:
-                            try:
-                                price_numbers = re.findall(r'[\d,]+', property_data['teljes_ar'].replace(' ', ''))
-                                area_numbers = re.findall(r'\d+', property_data['terulet'])
-                                
-                                if price_numbers and area_numbers:
-                                    price_value = float(price_numbers[0].replace(',', '.'))
-                                    area_value = int(area_numbers[0])
-                                    
-                                    if 'millió' in property_data['teljes_ar'].lower():
-                                        price_value *= 1000000
-                                    elif 'ezer' in property_data['teljes_ar'].lower():
-                                        price_value *= 1000
-                                    
-                                    if area_value > 0:
-                                        nm_price = int(price_value / area_value)
-                                        property_data['nm_ar'] = f"{nm_price:,} Ft/m²".replace(',', ' ')
-                                    else:
-                                        property_data['nm_ar'] = ""
-                                else:
-                                    property_data['nm_ar'] = ""
-                            except:
-                                property_data['nm_ar'] = ""
                         else:
-                            property_data['nm_ar'] = ""
-                            
+                            property_data['terulet'] = ""
                     except:
                         property_data['terulet'] = ""
+                    
+                    # Szobák száma - javított megközelítés
+                    try:
+                        all_elements = await element.query_selector_all('*')
+                        for elem in all_elements:
+                            text = await elem.inner_text()
+                            if text and ('szoba' in text.lower() or '+' in text) and len(text) < 15:
+                                property_data['szobak'] = text.strip()
+                                break
+                        else:
+                            property_data['szobak'] = ""
+                    except:
                         property_data['szobak'] = ""
-                        property_data['nm_ar'] = ""
+                    
+                    # NÉGYZETMÉTER ÁR SZÁMÍTÁSA (ha van ár és terület)
+                    property_data['nm_ar'] = ""
+                    if property_data['teljes_ar'] and property_data['terulet']:
+                        try:
+                            price_num = self._extract_number_from_price(property_data['teljes_ar'])
+                            area_num = self._extract_number_from_area(property_data['terulet'])
+                            
+                            if price_num and area_num:
+                                price_per_sqm = int(price_num / area_num)
+                                property_data['nm_ar'] = f"{price_per_sqm:,} Ft / m2".replace(',', ' ')
+                                
+                        except Exception:
+                            # Nem kritikus hiba
+                            pass
                     
                     properties.append(property_data)
                     
@@ -350,6 +343,59 @@ class UrlBasedPropertyScraper:
         except Exception as e:
             print(f"❌ CSV mentési hiba: {e}")
             return None
+
+    def _extract_number_from_price(self, price_text: str):
+        """
+        Ár szövegből numerikus érték kinyerése.
+        
+        Args:
+            price_text: Ár szöveg (pl. "45,5 M Ft", "120 000 Ft")
+            
+        Returns:
+            float or None: Numerikus ár érték
+        """
+        try:
+            # Számjegyek és tizedesjel kinyerése
+            import re
+            numbers = re.findall(r'[\d,\.]+', price_text.replace(' ', ''))
+            if numbers:
+                num_str = numbers[0].replace(',', '.')
+                num_value = float(num_str)
+                
+                # Millió/milliárd szorzó kezelése
+                if 'M' in price_text.upper():
+                    num_value *= 1_000_000
+                elif 'MRD' in price_text.upper():
+                    num_value *= 1_000_000_000
+                
+                return num_value
+                
+        except Exception:
+            pass
+        
+        return None
+    
+    def _extract_number_from_area(self, area_text: str):
+        """
+        Terület szövegből numerikus érték kinyerése.
+        
+        Args:
+            area_text: Terület szöveg (pl. "120 m2")
+            
+        Returns:
+            float or None: Numerikus terület érték
+        """
+        try:
+            import re
+            numbers = re.findall(r'[\d,\.]+', area_text.replace(' ', ''))
+            if numbers:
+                num_str = numbers[0].replace(',', '.')
+                return float(num_str)
+                
+        except Exception:
+            pass
+        
+        return None
 
     async def close(self):
         """Kapcsolat bezárása"""
