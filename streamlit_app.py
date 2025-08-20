@@ -24,17 +24,15 @@ try:
 except ImportError:
     OPTIMIZED_ML_AVAILABLE = False
 
-try:
-    from analyze_descriptions_focused import IngatlanSzovegelemzo
-    TEXT_ANALYSIS_AVAILABLE = True
-except ImportError:
-    TEXT_ANALYSIS_AVAILABLE = False
+# Szöveganalízis már integrálva van a scraper-be, ezért mindig elérhető
+TEXT_ANALYSIS_AVAILABLE = True  # Enhanced Mode mindig elérhető
 
 @st.cache_data(ttl=10)  # 10 másodperc cache
 def load_data():
     """Adatok betöltése"""
     try:
-        df = pd.read_csv("ingatlan_reszletes_elado_haz_erd_erdliget_20250820_014506.csv", encoding='utf-8-sig')
+        # Először próbáljuk az enhanced CSV-t (preferált)
+        df = pd.read_csv("ingatlan_reszletes_enhanced_text_features.csv", encoding='utf-8-sig')
         
         # Numerikus konverziók
         if 'nm_ar' in df.columns:
@@ -189,7 +187,7 @@ def run_basic_dashboard():
                 use_text_features = False
                 if TEXT_ANALYSIS_AVAILABLE:
                     use_text_features = st.checkbox("🎯 **Enhanced Mode**: Szöveges leírás alapú feature-k", 
-                                                   value=False, key="dashboard_use_text_features")
+                                                   value=True, key="dashboard_use_text_features")
                 
                 # Kompakt input form
                 quick_col1, quick_col2, quick_col3 = st.columns(3)
@@ -267,30 +265,32 @@ def run_basic_dashboard():
                         
                         # SZÖVEGES FEATURE-K (Enhanced Mode)
                         text_features = {}
-                        if use_text_features and TEXT_ANALYSIS_AVAILABLE and leiras_text.strip():
-                            szoveg_elemzo = IngatlanSzovegelemzo()
-                            pontszamok, details = szoveg_elemzo.extract_category_scores(leiras_text)
-                            
-                            # Szöveges pontszámok és dummy változók
+                        if use_text_features and TEXT_ANALYSIS_AVAILABLE:
+                            # Enhanced CSV már tartalmazza az összes szöveges feature-t
+                            # Alapértelmezett értékek a becsléshez (felhasználó által megadható később)
                             text_features.update({
-                                'luxus_minoseg_pont': pontszamok.get('LUXUS_MINOSEG', 0),
-                                'van_luxus_kifejezés': int(pontszamok.get('LUXUS_MINOSEG', 0) > 0),
-                                'komfort_extra_pont': pontszamok.get('KOMFORT_EXTRA', 0),
-                                'van_komfort_extra': int(pontszamok.get('KOMFORT_EXTRA', 0) > 0),
-                                'parkolas_garage_pont': pontszamok.get('PARKOLAS_GARAGE', 0),
-                                'netto_szoveg_pont': sum(pontszamok.values()),
-                                'van_negativ_elem': int(pontszamok.get('NEGATIV_ELEMEK', 0) < 0),
-                                'ossz_pozitiv_pont': sum(max(0, p) for p in pontszamok.values())
+                                'luxus_minoseg_pont': 0,
+                                'van_luxus_kifejezés': 0,
+                                'komfort_extra_pont': 0,
+                                'van_komfort_extra': 0,
+                                'parkolas_garage_pont': 0,
+                                'van_garage_parkolas': 0,
+                                'kert_terulet_pont': 0,
+                                'van_kert_terulet': 0,
+                                'netto_szoveg_pont': 0,
+                                'van_negativ_elem': 0,
+                                'van_paneles_epitesmód': 0,
+                                'van_tégla_anyag': 0,
+                                'van_modern_felujaitas': 0,
+                                'lakhatosag_pont': 0,
+                                'van_felújitando_allapot': 0,
+                                'van_újepitesu_kategoria': 0,
+                                'energetika_pont': 0,
+                                'van_fejlett_energetika': 0
                             })
                             
-                            # Szövegfeature részletek megjelenítése
-                            if sum(pontszamok.values()) > 0:
-                                st.write("**📊 Detected Text Features:**")
-                                for kategoria, pont in pontszamok.items():
-                                    if pont > 0:
-                                        st.write(f"• {kategoria}: +{pont:.1f} pont")
-                                    elif pont < 0:
-                                        st.write(f"• {kategoria}: {pont:.1f} pont")
+                            # Szövegfeature információ
+                            st.info("🌟 **Enhanced Mode**: Szöveges feature-k használhatók részletesebb becsléshez!")
                         
                         # Feature vektor összeállítása - DINAMIKUS feature lista
                         all_features = {**base_features, **text_features}
@@ -320,7 +320,31 @@ def run_basic_dashboard():
                             if text_feature_count == 0:
                                 st.error("❌ **Nincs aktív szöveges feature!** A modell valószínűleg nincs Enhanced adatokkal tanítva.")
                         
-                        user_vector = np.array([all_features.get(f, 0) for f in feature_list]).reshape(1, -1)
+                        # Ellenőrizzük, hogy a modell hány feature-t vár
+                        model_feature_count = None
+                        if hasattr(opt_model, 'best_model') and hasattr(opt_model.best_model, 'n_features_in_'):
+                            model_feature_count = opt_model.best_model.n_features_in_
+                        
+                        # JAVÍTOTT: Feature lista a modell elvárásai szerint
+                        if model_feature_count == 20:
+                            # A modell Enhanced feature-kkel lett betanítva - minden feature-t használunk
+                            if use_text_features and text_features:
+                                user_vector = np.array([all_features.get(f, 0) for f in opt_model.all_features]).reshape(1, -1)
+                                st.info("🌟 **Enhanced Mode**: 20 feature használva (alap + szöveges)")
+                            else:
+                                st.error("❌ **Modell hiba**: A modell Enhanced feature-kkel lett betanítva, de Enhanced Mode nincs bekapcsolva!")
+                                st.info("💡 **Megoldás**: Kapcsold be az 'Enhanced szöveges elemzés' opciót!")
+                                return
+                        else:
+                            # A modell csak alap feature-kkel lett betanítva
+                            basic_features = [f for f in opt_model.significant_features if f in all_features]
+                            user_vector = np.array([all_features.get(f, 0) for f in basic_features]).reshape(1, -1)
+                            if use_text_features:
+                                st.warning("⚠️ **Figyelem**: A modell nincs Enhanced feature-kkel tanítva!")
+                                st.info("💡 **Megoldás**: Tanítsd újra a modellt Enhanced opcióval!")
+                            else:
+                                st.info(f"🔧 **Alap Mode**: {len(basic_features)} feature használva")
+                        
                         predicted_price = opt_model.best_model.predict(user_vector)[0]
                         price_per_m2 = (predicted_price * 1_000_000) / quick_terulet
                         

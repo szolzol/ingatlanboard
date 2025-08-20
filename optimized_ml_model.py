@@ -329,7 +329,7 @@ class OptimalizaltIngatlanModell:
         
         return clean_df
     
-    def adatok_elokeszitese(self, csv_file="ingatlan_reszletes_elado_haz_erd_erdliget_20250820_014506.csv"):
+    def adatok_elokeszitese(self, csv_file="ingatlan_reszletes_enhanced_text_features.csv"):
         """
         Adatok betöltése és előkészítése CSAK SZIGNIFIKÁNS VÁLTOZÓKKAL
         """

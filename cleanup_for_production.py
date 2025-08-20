@@ -10,19 +10,24 @@ def cleanup_for_production():
     Eltávolítja az összes nem szükséges fájlt a production deploymenthez
     """
     
-    # Kötelező production fájlok
+    # ✅ Kötelező production fájlok (integrált verzió)
     KEEP_FILES = {
-        'streamlit_app.py',
-        'optimized_ml_model.py', 
-        'analyze_descriptions_focused.py',
-        'ingatlan_reszletes_enhanced_text_features.csv',
-        'requirements.txt',
-        # DATA PIPELINE (adatfrissítéshez)
-        'ingatlan_list_details_scraper.py',  # ⚠️ Alap CSV előállítása
-        'enhance_csv_with_text.py',          # ⚠️ Enhanced CSV előállítása
-        'update_data.py',                    # ⚠️ Adatfrissítő script
+        'streamlit_app.py',                                    # FŐ DASHBOARD
+        'optimized_ml_model.py',                               # ML MODELL  
+        'ingatlan_reszletes_enhanced_text_features.csv',       # ENHANCED ADATOK
+        'requirements.txt',                                    # FÜGGŐSÉGEK
+        # INTEGRÁLT DATA PIPELINE
+        'ingatlan_list_details_scraper.py',                    # 🌟 INTEGRÁLT SCRAPER
+        'update_data.py',                                      # ADATFRISSÍTŐ
         # OPCIONÁLIS
-        'README.md'
+        'README.md',
+        'PRODUCTION_FILES_ANALYSIS.md'
+    }
+    
+    # 🗑️ Elhagyandó fájlok (redundáns az integráció után)
+    FORCE_DELETE_FILES = {
+        'analyze_descriptions_focused.py',  # BEÉPÜLT a scraper-be
+        'enhance_csv_with_text.py'          # BEÉPÜLT a scraper-be
     }
     
     # Elhagyandó mappák
@@ -72,6 +77,16 @@ def cleanup_for_production():
                 print(f"✅ Megőrizve: {file}")
                 kept_files += 1
                 continue
+            
+            # 🗑️ Redundáns fájlok törlése (integráció után)
+            if file in FORCE_DELETE_FILES:
+                try:
+                    os.remove(file)
+                    print(f"🗑️ Redundáns fájl törölve: {file}")
+                    deleted_files += 1
+                except Exception as e:
+                    print(f"❌ Hiba {file} törlésekor: {e}")
+                continue
                 
             # Egyedi elhagyandó fájlok
             delete_these = [
@@ -90,8 +105,11 @@ def cleanup_for_production():
                 'scrape_property_details_pipeline.py',
                 'scrape_url_based.py',
                 'scrape_url_based_pipeline.py',
+                # Teszt fájlok az integráció után
+                'test_integrated_scraper.py',
+                'test_scraper_simulation.py',
                 # Fallback CSV
-                'ingatlan_reszletes_elado_haz_erd_erdliget_20250820_014506.csv',  # fallback CSV
+                'ingatlan_reszletes_elado_haz_erd_erdliget_20250820_014506.csv',
                 '.gitignore',
                 # Dokumentációk (opcionális törlés)
                 'HIBRID_UTMUTATO.md',
@@ -127,11 +145,19 @@ def cleanup_for_production():
                 print(f"⚠️ Ismeretlen fájl (kézi ellenőrzés): {file}")
     
     print("\n" + "="*50)
-    print("🏁 CLEANUP BEFEJEZVE!")
+    print("🏁 INTEGRÁLT CLEANUP BEFEJEZVE!")
     print(f"✅ Megőrzött fájlok: {kept_files}")
     print(f"🗑️ Törölt fájlok: {deleted_files}")
     print(f"🗑️ Törölt mappák: {deleted_dirs}")
+    
+    print("\n🌟 INTEGRÁCIÓ UTÁN:")
+    print("  📦 Szöveganalízis beépített")
+    print("  🔧 Enhanced CSV automatikus")
+    print("  📊 18 text feature minden scraping-nél")
+    print("  🚀 Enhanced Mode alapértelmezett")
+    
     print("\n🎯 PRODUCTION READY!")
+    print("💡 Futtatás: python -m streamlit run streamlit_app.py")
     print("📋 Következő lépés: python -m streamlit run streamlit_app.py")
 
 if __name__ == "__main__":

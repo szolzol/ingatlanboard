@@ -17,8 +17,145 @@ import sys
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import pandas as pd
+import numpy as np
 import subprocess
+from collections import Counter, defaultdict
 from playwright.async_api import async_playwright
+
+class IngatlanSzovegelemzo:
+    """
+    Beépített szöveganalízis modul - Enhanced feature-k generálása
+    """
+    def __init__(self):
+        """Inicializálja a kategóriákat és kulcsszavakat"""
+        
+        # ÉRTÉKBEFOLYÁSOLÓ KATEGÓRIÁK ÉS KULCSSZAVAIK
+        self.kategoriak = {
+            'LUXUS_MINOSEG': {
+                'kulcsszavak': [
+                    'luxus', 'prémium', 'elegáns', 'exkluzív', 'különleges', 'lenyűgöző',
+                    'kivételes', 'egyedi', 'reprezentatív', 'igényes', 'stílusos',
+                    'designer', 'magas színvonal', 'minőségi', 'design', 'dizájn'
+                ],
+                'pontszam': 3.0
+            },
+            
+            'KERT_KULSO': {
+                'kulcsszavak': [
+                    'parkosított', 'kert', 'telek', 'udvar', 'kertészkedés', 'gyümölcsfa',
+                    'növények', 'fű', 'pázsit', 'virágos', 'árnyékos', 'napos kert',
+                    'pergola', 'terasz', 'erkély', 'balkon', 'panoráma', 'kilátás',
+                    'természet', 'zöld', 'park', 'liget'
+                ],
+                'pontszam': 2.5
+            },
+            
+            'PARKOLAS_GARAGE': {
+                'kulcsszavak': [
+                    'garázs', 'parkoló', 'autó', 'gépkocsi', 'állás', 'fedett',
+                    'saját parkoló', 'dupla garázs', 'többállásos', 'behajtó',
+                    'kocsibeálló', 'két autó', '2 autó', 'parkolási lehetőség'
+                ],
+                'pontszam': 2.0
+            },
+            
+            'TERULET_MERET': {
+                'kulcsszavak': [
+                    'tágas', 'nagy', 'széles', 'hatalmas', 'óriás', 'bőséges',
+                    'tér', 'alapterület', 'hasznos', 'nappali', 'hálószoba',
+                    'szoba', 'helyiség', 'kamra', 'tároló', 'pince', 'tetőtér',
+                    'm2', 'négyzetméter', 'quadratmeter'
+                ],
+                'pontszam': 2.0
+            },
+            
+            'KOMFORT_EXTRA': {
+                'kulcsszavak': [
+                    'klíma', 'légkondi', 'szauna', 'medence', 'jakuzzi', 'wellness',
+                    'hőszivattyú', 'napelem', 'okos otthon', 'riasztó', 'kamerás',
+                    'központi porszívó', 'padlófűtés', 'geotermikus',
+                    'hangosítás', 'internet', 'kábelezés', 'optika'
+                ],
+                'pontszam': 2.5
+            },
+            
+            'ALLAPOT_FELUJITAS': {
+                'kulcsszavak': [
+                    'felújított', 'renovált', 'korszerűsített', 'új', 'frissen',
+                    'most készült', 'újépítés', 'modernizált', 'átépített',
+                    'beköltözhető', 'kulcsrakész', 'azonnal', 'költözés'
+                ],
+                'pontszam': 2.0
+            },
+            
+            'LOKACIO_KORNYEZET': {
+                'kulcsszavak': [
+                    'csendes', 'békés', 'nyugodt', 'családi', 'villa negyed',
+                    'központi', 'közel', 'közlekedés', 'iskola', 'óvoda',
+                    'bolt', 'bevásárlás', 'játszótér', 'sport', 'erdő', 'domb'
+                ],
+                'pontszam': 1.5
+            },
+            
+            'FUTES_ENERGIA': {
+                'kulcsszavak': [
+                    'gáz', 'távfűtés', 'kandalló', 'cserépkályha', 'fatűzés',
+                    'energiatakarékos', 'szigetelt', 'alacsony rezsi',
+                    'hőszigetelés', 'műanyag ablak', 'redőny'
+                ],
+                'pontszam': 1.2
+            },
+            
+            'NEGATIV_TENYEZOK': {
+                'kulcsszavak': [
+                    'felújítandó', 'felújításra szorul', 'régi', 'rossz állapot',
+                    'problémás', 'javítandó', 'cserélendő', 'hiányos',
+                    'beázás', 'nedves', 'penész', 'rezsikölts', 'drága fűtés',
+                    'forgalmas', 'zajos', 'busy'
+                ],
+                'pontszam': -1.5
+            }
+        }
+    
+    def clean_text(self, text):
+        """Szöveg tisztítása és normalizálása"""
+        if pd.isna(text):
+            return ""
+        text = str(text).lower()
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = re.sub(r'[^\w\s]', ' ', text)
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+    
+    def extract_category_scores(self, text):
+        """Kategória pontszámok kinyerése egy szövegből"""
+        clean_text = self.clean_text(text)
+        
+        scores = {}
+        details = {}
+        
+        for kategoria, info in self.kategoriak.items():
+            kulcsszavak = info['kulcsszavak']
+            pontszam = info['pontszam']
+            
+            talalt_szavak = []
+            ossz_pontszam = 0
+            
+            for kulcsszo in kulcsszavak:
+                if kulcsszo in clean_text:
+                    talalt_szavak.append(kulcsszo)
+                    # Többszörösen előforduló szavak többet érnek
+                    elofordulas = clean_text.count(kulcsszo)
+                    ossz_pontszam += pontszam * elofordulas
+            
+            scores[kategoria] = ossz_pontszam
+            details[kategoria] = {
+                'talalt_szavak': talalt_szavak,
+                'db': len(talalt_szavak),
+                'pontszam': ossz_pontszam
+            }
+        
+        return scores, details
 
 class KomplettIngatlanPipeline:
     def __init__(self):
@@ -1151,10 +1288,11 @@ class DetailedScraper:
         }
     
     def save_to_csv(self, detailed_data):
-        """Részletes CSV mentés"""
+        """Részletes CSV mentés Enhanced Text Feature-kkel"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"ingatlan_reszletes_{self.location_name}_{timestamp}.csv"
+            base_filename = f"ingatlan_reszletes_{self.location_name}_{timestamp}.csv"
+            enhanced_filename = f"ingatlan_reszletes_enhanced_text_features.csv"
             
             df = pd.DataFrame(detailed_data)
             
@@ -1170,13 +1308,107 @@ class DetailedScraper:
             final_columns = available_priority + other_cols
             df = df[final_columns]
             
-            df.to_csv(filename, index=False, encoding='utf-8-sig')
+            # Alap CSV mentése (backup)
+            df.to_csv(base_filename, index=False, encoding='utf-8-sig')
+            print(f"💾 Alap CSV mentve: {base_filename}")
             
-            print(f"💾 Részletes CSV mentve: {filename}")
-            return filename
+            # 🌟 ENHANCED TEXT FEATURES GENERÁLÁS
+            print(f"� Enhanced text feature-k generálása...")
+            
+            # Szövegelemző inicializálása
+            analyzer = IngatlanSzovegelemzo()
+            
+            # Új oszlopok inicializálása
+            text_feature_columns = {
+                'luxus_minoseg_pont': 0.0,
+                'kert_kulso_pont': 0.0,
+                'parkolas_garage_pont': 0.0,
+                'terulet_meret_pont': 0.0,
+                'komfort_extra_pont': 0.0,
+                'allapot_felujitas_pont': 0.0,
+                'lokacio_kornyezet_pont': 0.0,
+                'futes_energia_pont': 0.0,
+                'negativ_tenyezok_pont': 0.0,
+                
+                # Dummy változók (0/1)
+                'van_luxus_kifejezés': 0,
+                'van_kert_terulet': 0,
+                'van_garage_parkolas': 0,
+                'van_komfort_extra': 0,
+                'van_negativ_elem': 0,
+                
+                # Összesített pontszámok
+                'ossz_pozitiv_pont': 0.0,
+                'ossz_negativ_pont': 0.0,
+                'netto_szoveg_pont': 0.0
+            }
+            
+            # Oszlopok hozzáadása
+            for col_name, default_value in text_feature_columns.items():
+                df[col_name] = default_value
+            
+            # Text feature-k generálása minden sorhoz
+            processed_count = 0
+            for idx, row in df.iterrows():
+                if pd.notna(row.get('leiras', '')):
+                    # Kategória pontszámok kinyerése
+                    scores, details = analyzer.extract_category_scores(row['leiras'])
+                    
+                    # Pontszámok mentése
+                    df.at[idx, 'luxus_minoseg_pont'] = scores.get('LUXUS_MINOSEG', 0)
+                    df.at[idx, 'kert_kulso_pont'] = scores.get('KERT_KULSO', 0)
+                    df.at[idx, 'parkolas_garage_pont'] = scores.get('PARKOLAS_GARAGE', 0)
+                    df.at[idx, 'terulet_meret_pont'] = scores.get('TERULET_MERET', 0)
+                    df.at[idx, 'komfort_extra_pont'] = scores.get('KOMFORT_EXTRA', 0)
+                    df.at[idx, 'allapot_felujitas_pont'] = scores.get('ALLAPOT_FELUJITAS', 0)
+                    df.at[idx, 'lokacio_kornyezet_pont'] = scores.get('LOKACIO_KORNYEZET', 0)
+                    df.at[idx, 'futes_energia_pont'] = scores.get('FUTES_ENERGIA', 0)
+                    df.at[idx, 'negativ_tenyezok_pont'] = scores.get('NEGATIV_TENYEZOK', 0)
+                    
+                    # Dummy változók
+                    df.at[idx, 'van_luxus_kifejezés'] = 1 if scores.get('LUXUS_MINOSEG', 0) > 0 else 0
+                    df.at[idx, 'van_kert_terulet'] = 1 if scores.get('KERT_KULSO', 0) > 0 else 0
+                    df.at[idx, 'van_garage_parkolas'] = 1 if scores.get('PARKOLAS_GARAGE', 0) > 0 else 0
+                    df.at[idx, 'van_komfort_extra'] = 1 if scores.get('KOMFORT_EXTRA', 0) > 0 else 0
+                    df.at[idx, 'van_negativ_elem'] = 1 if scores.get('NEGATIV_TENYEZOK', 0) < 0 else 0
+                    
+                    # Összesített pontszámok
+                    pozitiv_kategoriak = ['LUXUS_MINOSEG', 'KERT_KULSO', 'PARKOLAS_GARAGE', 
+                                         'TERULET_MERET', 'KOMFORT_EXTRA', 'ALLAPOT_FELUJITAS',
+                                         'LOKACIO_KORNYEZET', 'FUTES_ENERGIA']
+                    
+                    ossz_pozitiv = sum(max(0, scores.get(k, 0)) for k in pozitiv_kategoriak)
+                    ossz_negativ = abs(min(0, scores.get('NEGATIV_TENYEZOK', 0)))
+                    
+                    df.at[idx, 'ossz_pozitiv_pont'] = ossz_pozitiv
+                    df.at[idx, 'ossz_negativ_pont'] = ossz_negativ
+                    df.at[idx, 'netto_szoveg_pont'] = ossz_pozitiv - ossz_negativ
+                    
+                    processed_count += 1
+            
+            print(f"✅ Text feature-k generálva: {processed_count} ingatlanhoz")
+            
+            # Text feature statisztikák
+            print(f"📊 ENHANCED FEATURE STATISZTIKÁK:")
+            print(f"💎 Luxus: {df['van_luxus_kifejezés'].sum()} ingatlan")
+            print(f"🌳 Kert: {df['van_kert_terulet'].sum()} ingatlan") 
+            print(f"🚗 Garázs: {df['van_garage_parkolas'].sum()} ingatlan")
+            print(f"🏡 Komfort: {df['van_komfort_extra'].sum()} ingatlan")
+            print(f"⚠️ Negatív: {df['van_negativ_elem'].sum()} ingatlan")
+            
+            # Enhanced CSV mentése
+            df.to_csv(enhanced_filename, index=False, encoding='utf-8-sig')
+            
+            print(f"🌟 Enhanced CSV mentve: {enhanced_filename}")
+            print(f"📊 Oszlopok: {len(df.columns)} (+ {len(text_feature_columns)} text feature)")
+            print(f"✨ Használatra kész az Enhanced ML modellhez!")
+            
+            return enhanced_filename  # Az enhanced fájlt adjuk vissza
             
         except Exception as e:
             print(f"❌ CSV mentési hiba: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     async def close(self):
