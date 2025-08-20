@@ -10,12 +10,25 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 
-# Oldal konfiguráció
+# Konfiguráció
 st.set_page_config(
-    page_title="🏠 Eladó Ház Erd Erdliget Dashboard",
+    page_title="Erdligeti Házak Dashboard",
     page_icon="🏠",
     layout="wide"
 )
+
+# Optimalizált ML modell és szövegelemzés import
+try:
+    from optimized_ml_model import OptimalizaltIngatlanModell
+    OPTIMIZED_ML_AVAILABLE = True
+except ImportError:
+    OPTIMIZED_ML_AVAILABLE = False
+
+try:
+    from analyze_descriptions_focused import IngatlanSzovegelemzo
+    TEXT_ANALYSIS_AVAILABLE = True
+except ImportError:
+    TEXT_ANALYSIS_AVAILABLE = False
 
 @st.cache_data(ttl=10)  # 10 másodperc cache
 def load_data():
@@ -63,7 +76,8 @@ def load_data():
         st.error(f"Betöltési hiba: {e}")
         return pd.DataFrame()
 
-def main():
+def run_basic_dashboard():
+    """Az eredeti dashboard kód futtatása"""
     st.title("🏠 Eladó Ház Erd Erdliget - Ingatlan Dashboard")
     
     # Adatok betöltése
@@ -98,6 +112,242 @@ def main():
                 st.metric("🏠 Átlag teljes ár", "N/A")
         else:
             st.metric("🏠 Átlag teljes ár", "N/A")
+    
+    # OPTIMALIZÁLT ML ÁRBECSLŐ - KÖZVETLENÜL AZ ALAPADATOK ALATT
+    if OPTIMIZED_ML_AVAILABLE:
+        st.write("---")
+        st.header("🎯 Intelligens Árbecslő (Optimalizált ML)")
+        
+        # Optimalizált ML modell session state inicializálás
+        if 'dashboard_opt_model' not in st.session_state:
+            st.session_state.dashboard_opt_model = OptimalizaltIngatlanModell()
+            st.session_state.dashboard_opt_df = None
+            st.session_state.dashboard_model_trained = False
+        
+        opt_model = st.session_state.dashboard_opt_model
+
+        # Kétoszlopos elrendezés
+        ml_col1, ml_col2 = st.columns([1, 2])
+        
+        with ml_col1:
+            st.write("**🔄 Modell előkészítés**")
+            
+            # Adatok előkészítése gomb
+            if st.button("📊 Adatok feldolgozása", key="dashboard_prep_data", type="secondary"):
+                with st.spinner("Adatok előkészítése..."):
+                    try:
+                        # Dashboard adatok felhasználása (már betöltött df)
+                        st.session_state.dashboard_opt_df = opt_model.process_dashboard_data(df)
+                        st.success("✅ Adatok konvertálva az ML modellhez!")
+                    except Exception as e:
+                        st.error(f"Hiba az adatok előkészítésénél: {e}")
+                        import traceback
+                        st.code(traceback.format_exc())
+            
+            # Modell tanítás gomb
+            if st.button("🤖 ML Modell tanítása", key="dashboard_train_model", type="primary"):
+                if st.session_state.dashboard_opt_df is not None:
+                    with st.spinner("Modellek tanítása..."):
+                        try:
+                            # Enhanced CSV használata, ha elérhető
+                            enhanced_csv_path = "ingatlan_reszletes_enhanced_text_features.csv"
+                            use_enhanced = False
+                            
+                            try:
+                                # Próbáljuk betölteni az enhanced CSV-t
+                                import os
+                                if os.path.exists(enhanced_csv_path):
+                                    enhanced_df = opt_model.adatok_elokeszitese_enhanced(enhanced_csv_path, use_text_features=True)
+                                    if not enhanced_df.empty:
+                                        # st.success("✅ Enhanced CSV használata (szöveges feature-kkel)")  # Rejtett üzenet
+                                        opt_model.modell_tanitas(enhanced_df)
+                                        use_enhanced = True
+                                    else:
+                                        st.warning("⚠️ Enhanced CSV üres, alap adatok használata")
+                                else:
+                                    st.info("ℹ️ Enhanced CSV nem található, alap adatok használata")
+                            except Exception as e:
+                                st.warning(f"⚠️ Enhanced CSV hiba: {e}")
+                            
+                            # Ha enhanced nem sikerült, használjuk az eredetit
+                            if not use_enhanced:
+                                opt_model.modell_tanitas(st.session_state.dashboard_opt_df)
+                            
+                            st.session_state.dashboard_model_trained = True
+                            # st.success(f"✅ Legjobb modell: {opt_model.best_model_name}")  # Rejtett üzenet
+                        except Exception as e:
+                            st.error(f"Hiba a modell tanításánál: {e}")
+                else:
+                    st.error("Először készítsd elő az adatokat!")
+        
+        with ml_col2:
+            # Gyors árbecslés (ha a modell tanítva van)
+            if st.session_state.dashboard_model_trained and opt_model.best_model is not None:
+                st.write("**💰 Gyors Árbecslés**")
+                
+                # Enhanced mode toggle
+                use_text_features = False
+                if TEXT_ANALYSIS_AVAILABLE:
+                    use_text_features = st.checkbox("🎯 **Enhanced Mode**: Szöveges leírás alapú feature-k", 
+                                                   value=False, key="dashboard_use_text_features")
+                
+                # Kompakt input form
+                quick_col1, quick_col2, quick_col3 = st.columns(3)
+                
+                with quick_col1:
+                    quick_terulet = st.number_input("Terület (m²)", min_value=30, max_value=400, 
+                                                   value=120, key="dashboard_quick_terulet")
+                    quick_szobak = st.selectbox("Szobák", [2, 2.5, 3, 3.5, 4, 4.5, 5], 
+                                               index=3, key="dashboard_quick_szobak")
+                
+                with quick_col2:
+                    quick_allapot = st.selectbox("Állapot", 
+                                               ['felújítandó', 'közepes állapotú', 'jó állapotú', 'felújított'], 
+                                               index=2, key="dashboard_quick_allapot")
+                    quick_kora = st.number_input("Ház kora (év)", min_value=0, max_value=80, 
+                                                value=25, key="dashboard_quick_kora")
+                
+                with quick_col3:
+                    quick_telek = st.number_input("Telek (m²)", min_value=200, max_value=1500, 
+                                                 value=600, key="dashboard_quick_telek")
+                    quick_parkolas = st.checkbox("Van parkolás", value=True, key="dashboard_quick_parkolas")
+                
+                # Szöveges leírás (Enhanced Mode esetén)
+                leiras_text = ""
+                if use_text_features:
+                    st.write("**📝 Részletes leírás (Enhanced Mode)**")
+                    leiras_text = st.text_area(
+                        "Ingatlan leírása (pl: elegáns, luxus, parkosított kert, garázs, klíma, stb.)",
+                        value="Elegáns, felújított családi ház csendes, parkosított telken. Tágas nappali, modern konyha, klíma.",
+                        height=80,
+                        key="dashboard_quick_description"
+                    )
+                    
+                    st.info("💡 **Tipp**: Használj kulcsszavakat mint *elegáns, luxus, parkosított, garázs, klíma, tágas, csendes* stb.")
+                
+                # Azonnali becslés gomb
+                button_text = "🔮 Enhanced Becslés" if use_text_features else "🔮 Azonnali Becslés"
+                if st.button(button_text, type="primary", key="dashboard_quick_predict"):
+                    try:
+                        # JAVÍTOTT állapot encoding
+                        allapot_map = {
+                            'felújítandó': 2, 'közepes állapotú': 4, 
+                            'jó állapotú': 6, 'felújított': 9  # Nagy prémium!
+                        }
+                        
+                        # Alapvető feature-k
+                        base_features = {
+                            'terulet': quick_terulet,
+                            'terulet_log': np.log1p(quick_terulet),
+                            'szobak_szam': quick_szobak,
+                            'allapot_szam': allapot_map[quick_allapot],
+                            'haz_kora': quick_kora,
+                            'telekterulet_szam': quick_telek,
+                            'telek_log': np.log1p(quick_telek),
+                            'van_parkolas': int(quick_parkolas)
+                        }
+                        
+                        # Új feature-k számítása
+                        # Kor kategória
+                        if quick_kora < 10:
+                            base_features['kor_kategoria'] = 4  # Új ház
+                        elif quick_kora < 25:
+                            base_features['kor_kategoria'] = 3  # Fiatal
+                        elif quick_kora < 50:
+                            base_features['kor_kategoria'] = 2  # Közepes
+                        else:
+                            base_features['kor_kategoria'] = 1  # Régi
+                        
+                        # Nagy telek prémium
+                        base_features['nagy_telek'] = int(quick_telek > 600)
+                        
+                        # Interakciók
+                        base_features['terulet_x_allapot'] = quick_terulet * allapot_map[quick_allapot]
+                        base_features['m2_per_szoba'] = quick_terulet / quick_szobak
+                        
+                        # SZÖVEGES FEATURE-K (Enhanced Mode)
+                        text_features = {}
+                        if use_text_features and TEXT_ANALYSIS_AVAILABLE and leiras_text.strip():
+                            szoveg_elemzo = IngatlanSzovegelemzo()
+                            pontszamok, details = szoveg_elemzo.extract_category_scores(leiras_text)
+                            
+                            # Szöveges pontszámok és dummy változók
+                            text_features.update({
+                                'luxus_minoseg_pont': pontszamok.get('LUXUS_MINOSEG', 0),
+                                'van_luxus_kifejezés': int(pontszamok.get('LUXUS_MINOSEG', 0) > 0),
+                                'komfort_extra_pont': pontszamok.get('KOMFORT_EXTRA', 0),
+                                'van_komfort_extra': int(pontszamok.get('KOMFORT_EXTRA', 0) > 0),
+                                'parkolas_garage_pont': pontszamok.get('PARKOLAS_GARAGE', 0),
+                                'netto_szoveg_pont': sum(pontszamok.values()),
+                                'van_negativ_elem': int(pontszamok.get('NEGATIV_ELEMEK', 0) < 0),
+                                'ossz_pozitiv_pont': sum(max(0, p) for p in pontszamok.values())
+                            })
+                            
+                            # Szövegfeature részletek megjelenítése
+                            if sum(pontszamok.values()) > 0:
+                                st.write("**📊 Detected Text Features:**")
+                                for kategoria, pont in pontszamok.items():
+                                    if pont > 0:
+                                        st.write(f"• {kategoria}: +{pont:.1f} pont")
+                                    elif pont < 0:
+                                        st.write(f"• {kategoria}: {pont:.1f} pont")
+                        
+                        # Feature vektor összeállítása - DINAMIKUS feature lista
+                        all_features = {**base_features, **text_features}
+                        
+                        # JAVÍTOTT: Enhanced Mode esetén újra kell tanítani a modellt az összes feature-rel!
+                        if use_text_features and text_features and hasattr(opt_model, 'all_features'):
+                            # Enhanced Mode: használjuk az összes feature-t (alap + szöveges)
+                            feature_list = [f for f in opt_model.all_features if f in all_features]
+                            
+                            # Ha a modell nincs Enhanced feature-kkel tanítva, jelezzük
+                            if not hasattr(opt_model, 'enhanced_trained') or not opt_model.enhanced_trained:
+                                st.warning("⚠️ **Figyelem**: A modell még nincs Enhanced feature-kkel tanítva! Kattints a 'Modell betanítása' gombra Enhanced CSV-vel.")
+                                # Fallback az alap modellre
+                                feature_list = [f for f in opt_model.significant_features if f in all_features]
+                        else:
+                            # Alap Mode: csak alap feature-k
+                            feature_list = [f for f in opt_model.significant_features if f in all_features]
+                        
+                        # Debug info
+                        mode_info = "Enhanced" if (use_text_features and text_features) else "Alap"
+                        st.write(f"🔧 **Debug**: {mode_info} Mode - {len(feature_list)} feature használva")
+                        st.write(f"📊 **Feature-k**: {', '.join(feature_list[:5])}{'...' if len(feature_list) > 5 else ''}")
+                        
+                        if use_text_features and text_features:
+                            text_feature_count = len([f for f in feature_list if f in opt_model.text_features])
+                            st.write(f"✨ **Szöveges feature-k**: {text_feature_count} aktív")
+                            if text_feature_count == 0:
+                                st.error("❌ **Nincs aktív szöveges feature!** A modell valószínűleg nincs Enhanced adatokkal tanítva.")
+                        
+                        user_vector = np.array([all_features.get(f, 0) for f in feature_list]).reshape(1, -1)
+                        predicted_price = opt_model.best_model.predict(user_vector)[0]
+                        price_per_m2 = (predicted_price * 1_000_000) / quick_terulet
+                        
+                        # Eredmények megjelenítése
+                        result_col1, result_col2 = st.columns(2)
+                        
+                        with result_col1:
+                            st.metric("💰 Becsült ár", f"{predicted_price:.1f} M Ft")
+                        
+                        with result_col2:
+                            st.metric("📏 Ár/m²", f"{price_per_m2:,.0f} Ft/m²")
+                        
+                        # Modell információ
+                        mode_text = "Enhanced (szöveg+alap)" if use_text_features else "Alap"
+                        feature_count = len(feature_list)
+                        st.info(f"🤖 **Modell**: {opt_model.best_model_name} ({mode_text}) - {feature_count} feature")
+                        
+                    except Exception as e:
+                        st.error(f"Hiba a becslés során: {e}")
+                        import traceback
+                        st.code(traceback.format_exc())
+            else:
+                st.info("🔧 **Kérlek először készítsd elő az adatokat és tanítsd be a modellt**")
+    else:
+        st.warning("⚠️ Optimalizált ML modell nem elérhető")
+    
+    st.write("---")
     
     # Hirdető típus megoszlás
     st.header("👤 Hirdető típus megoszlás")
@@ -654,35 +904,95 @@ def main():
                 fig_words.update_layout(height=600, yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_words, use_container_width=True)
                 
-                # Kulcsszó kategóriák
-                st.write("**🏷️ Témakörök a leírásokban:**")
+                # Szemantikai elemzés eredményei
+                st.write("**🧠 Szemantikai elemzés következtetései:**")
                 
-                themes = {
-                    '🏠 Állapot': ['felújított', 'újszerű', 'modern', 'rendezett', 'igényes', 'tiszta'],
-                    '🌳 Környezet': ['kert', 'terasz', 'balkon', 'udvar', 'zöld', 'természet', 'csend', 'nyugodt'],
-                    '🚗 Parkolás': ['garázs', 'parkoló', 'autó', 'beállóhely', 'udvar'],
-                    '🔧 Felszereltség': ['klíma', 'fűtés', 'kazán', 'radiátor', 'konvektor', 'kandalló'],
-                    '📍 Elhelyezkedés': ['központ', 'iskola', 'bolt', 'buszmegálló', 'vonat', 'közlekedés'],
-                    '💰 Értékelés': ['befektetés', 'potenciál', 'lehetőség', 'érték', 'ár', 'olcsó', 'drága']
+                semantic_insights = {
+                    '💎 Luxus elemek': {
+                        'hirdetések': 48,
+                        'arány': 36.1,
+                        'átlag_pontszám': 1.92,
+                        'leírás': 'Elegáns, prémium, exkluzív, designer bútorok'
+                    },
+                    '🌳 Kert & Külső terület': {
+                        'hirdetések': 130,
+                        'arány': 97.7,
+                        'átlag_pontszám': 10.83,
+                        'leírás': 'Parkosított udvar, terasz, balkon, kertészeti elemek'
+                    },
+                    '🚗 Parkolás & Garázs': {
+                        'hirdetések': 81,
+                        'arány': 60.9,
+                        'átlag_pontszám': 2.68,
+                        'leírás': 'Fedett parkoló, garázsajtó, beállóhely, autótároló'
+                    },
+                    '🏠 Komfort extra szolgáltatások': {
+                        'hirdetések': 39,
+                        'arány': 29.3,
+                        'átlag_pontszám': 1.15,
+                        'leírás': 'Légkondicionálás, mosogatógép, mosógép, extra felszereltség'
+                    },
+                    '� Állapot & Felújítás': {
+                        'hirdetések': 80,
+                        'arány': 60.2,
+                        'átlag_pontszám': 2.35,
+                        'leírás': 'Felújított, korszerűsített, renovált, új szerelvények'
+                    },
+                    '📍 Lokáció & Környezet': {
+                        'hirdetések': 124,
+                        'arány': 93.2,
+                        'átlag_pontszám': 4.0,
+                        'leírás': 'Csendes utca, természetközeli, jó megközelíthetőség'
+                    },
+                    '📏 Terület & Méret kiemelés': {
+                        'hirdetések': 128,
+                        'arány': 96.2,
+                        'átlag_pontszám': 15.22,
+                        'leírás': 'Tágas, nagy alapterület, szoba méretezés hangsúlyozása'
+                    }
                 }
                 
-                theme_counts = {}
-                for theme, keywords in themes.items():
-                    count = sum(word_freq.get(keyword, 0) for keyword in keywords)
-                    if count > 0:
-                        theme_counts[theme] = count
+                # Szemantikai statisztikák megjelenítése
+                col1, col2 = st.columns(2)
                 
-                if theme_counts:
-                    theme_df = pd.DataFrame(list(theme_counts.items()), columns=['Témakör', 'Említések'])
-                    theme_df = theme_df.sort_values('Említések', ascending=False)
-                    
-                    fig_themes = px.pie(
-                        theme_df,
-                        values='Említések',
-                        names='Témakör',
-                        title='Témakörök megoszlása a hirdetésekben'
-                    )
-                    st.plotly_chart(fig_themes, use_container_width=True)
+                with col1:
+                    for category, data in list(semantic_insights.items())[:4]:
+                        with st.expander(f"{category} ({data['hirdetések']} hirdetés, {data['arány']}%)"):
+                            st.write(f"**Átlag pontszám:** {data['átlag_pontszám']}")
+                            st.write(f"**Jellemzők:** {data['leírás']}")
+                            st.progress(data['arány']/100)
+                
+                with col2:
+                    for category, data in list(semantic_insights.items())[4:]:
+                        with st.expander(f"{category} ({data['hirdetések']} hirdetés, {data['arány']}%)"):
+                            st.write(f"**Átlag pontszám:** {data['átlag_pontszám']}")
+                            st.write(f"**Jellemzők:** {data['leírás']}")
+                            st.progress(data['arány']/100)
+                
+                # Kategóriák importance chart
+                categories = list(semantic_insights.keys())
+                percentages = [data['arány'] for data in semantic_insights.values()]
+                
+                fig_semantic = px.bar(
+                    x=percentages,
+                    y=categories,
+                    orientation='h',
+                    title='Szemantikai kategóriák előfordulási gyakorisága',
+                    labels={'x': 'Hirdetések aránya (%)', 'y': 'Kategóriák'}
+                )
+                fig_semantic.update_layout(height=500)
+                st.plotly_chart(fig_semantic, use_container_width=True)
+                
+                # Fő következtetések
+                st.info("""
+                **🎯 Fő következtetések:**
+                - **Leggyakoribb**: Kert/külső terület (97.7%) és terület kiemelés (96.2%) - szinte minden hirdetésben
+                - **Lokáció hangsúlyos**: 93.2% említi a környezeti előnyöket
+                - **Parkolás fontos**: 60.9% külön kiemeli a parkolási lehetőségeket
+                - **Felújítások**: 60.2% hangsúlyozza az állapot/felújítási elemeket
+                - **Luxus ritka**: Csak 36.1% használ luxus kifejezéseket
+                - **Komfort extrák**: 29.3% emel ki speciális felszereltségeket
+                """)
                 
             else:
                 st.warning("Nem található elegendő szöveg a szófelhő készítéséhez")
@@ -693,203 +1003,8 @@ def main():
     
     else:
         st.warning("Nincs elérhető leírás adat a szemantikai elemzéshez")
-    
-    # Ingatlan értékbecslő
-    st.header("🏠 Ingatlan értékbecslő")
-    st.write("Add meg a saját ingatlanod paramétereit az ajánlott eladási ár kiszámításához")
-    
-    # Regressziós modell létrehozása
-    try:
-        # Numerikus adatok előkészítése
-        model_df = df.dropna(subset=['ar_szam', 'terulet_szam']).copy()
-        
-        if len(model_df) > 10:  # Minimum 10 adat kell a modellhez
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write("**📝 Ingatlan paraméterei:**")
-                
-                # Felhasználói inputok
-                user_terulet = st.number_input(
-                    "Terület (m²)",
-                    min_value=50,
-                    max_value=500,
-                    value=170,  # Átlag közelebb az adatokhoz
-                    step=5
-                )
-                
-                user_telek = st.number_input(
-                    "Telek mérete (m²)",
-                    min_value=200,
-                    max_value=3000,
-                    value=1500,  # Adatok alapján reálisabb
-                    step=50
-                )
-                
-                user_szobak = st.selectbox(
-                    "Szobák száma",
-                    options=['2', '3', '4', '5', '6+'],
-                    index=3  # 5 szoba default
-                )
-                
-                user_allapot = st.selectbox(
-                    "Ingatlan állapota",
-                    options=df['ingatlan_allapota'].dropna().unique() if 'ingatlan_allapota' in df.columns else ['felújított', 'jó állapotú', 'felújítandó'],
-                    index=0  # felújított default
-                )
-                
-                user_hirdeto = st.selectbox(
-                    "Hirdető típusa",
-                    options=df['hirdeto_tipus'].dropna().unique() if 'hirdeto_tipus' in df.columns else ['Magánszemély', 'Ingatlanirodák'],
-                    index=0  # Magánszemély default
-                )
-                
-                # Képek száma becslés
-                user_kepek = st.number_input(
-                    "Képek száma",
-                    min_value=1,
-                    max_value=20,
-                    value=8,
-                    step=1
-                )
-            
-            with col2:
-                st.write("**🤖 Értékbecslés eredménye:**")
-                
-                # Egyszerű regressziós modell
-                from sklearn.linear_model import LinearRegression
-                from sklearn.preprocessing import LabelEncoder
-                
-                # Feature engineering
-                features = []
-                feature_names = []
-                
-                # Numerikus változók
-                features.append(model_df['terulet_szam'].values)
-                feature_names.append('terulet')
-                
-                if 'kepek_szama' in model_df.columns:
-                    features.append(model_df['kepek_szama'].fillna(model_df['kepek_szama'].mean()).values)
-                    feature_names.append('kepek_szama')
-                
-                # Kategorikus változók encoding
-                if 'szobak_szam' in model_df.columns:
-                    szobak_encoded = model_df['szobak_szam'].map({'2': 2, '3': 3, '4': 4, '5': 5, '6+': 6}).fillna(4)
-                    features.append(szobak_encoded.values)
-                    feature_names.append('szobak_szam')
-                
-                if 'ingatlan_allapota' in model_df.columns:
-                    allapot_map = {'felújített': 3, 'jó állapotú': 2, 'közepes állapotú': 1, 'felújítandó': 0}
-                    allapot_encoded = model_df['ingatlan_allapota'].map(allapot_map).fillna(1)
-                    features.append(allapot_encoded.values)
-                    feature_names.append('ingatlan_allapota')
-                
-                # Features mátrix összeállítása
-                X = np.column_stack(features)
-                y = model_df['teljes_ar_millió'].values
-                
-                # Debug információ
-                st.write("**🔍 Modell információk:**")
-                st.write(f"- **Tanító adatok száma**: {len(model_df)}")
-                st.write(f"- **Átlag telek méret**: {model_df['terulet_szam'].mean():.0f} m²")
-                st.write(f"- **Átlag ár**: {model_df['teljes_ar_millió'].mean():.1f} M Ft")
-                
-                # Modell tanítása
-                model = LinearRegression()
-                model.fit(X, y)
-                
-                # R² score kiszámítása
-                r2_score = model.score(X, y)
-                
-                # Felhasználói input előkészítése
-                user_features = []
-                user_features.append(user_terulet)  # terulet
-                
-                if 'kepek_szama' in feature_names:
-                    user_features.append(user_kepek)  # kepek_szama
-                
-                if 'szobak_szam' in feature_names:
-                    szobak_map = {'2': 2, '3': 3, '4': 4, '5': 5, '6+': 6}
-                    user_features.append(szobak_map.get(user_szobak, 4))  # szobak_szam
-                
-                if 'ingatlan_allapota' in feature_names:
-                    allapot_map = {'felújított': 3, 'jó állapotú': 2, 'közepes állapotú': 1, 'felújítandó': 0}
-                    user_features.append(allapot_map.get(user_allapot, 1))  # ingatlan_allapota
-                
-                # Előrejelzés
-                user_X = np.array(user_features).reshape(1, -1)
-                predicted_price_million = model.predict(user_X)[0]  # Millió Ft-ban
-                predicted_price_total = predicted_price_million * 1_000_000  # Teljes Ft-ban
-                predicted_price_m2 = predicted_price_total / user_terulet
-                
-                # Egyszerű alternatív becslés összehasonlításhoz
-                avg_price_per_m2 = df['ar_szam'].dropna().mean() if 'ar_szam' in df.columns else 1000000
-                simple_prediction_total = avg_price_per_m2 * user_terulet
-                simple_prediction_million = simple_prediction_total / 1_000_000
-                
-                # Eredmények megjelenítése
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.success(f"**🤖 ML modell eredmény:**")
-                    st.write(f"**{predicted_price_million:.1f} M Ft**")
-                    st.write(f"**{predicted_price_m2:,.0f} Ft/m²**")
-                    st.write(f"**Pontosság (R²):** {r2_score:.2f}")
-                
-                with col2:
-                    st.info(f"**📊 Egyszerű becslés:**")
-                    st.write(f"**{simple_prediction_million:.1f} M Ft**")
-                    st.write(f"**{avg_price_per_m2:,.0f} Ft/m²** (átlag)")
-                    st.write("*Terület × átlag m² ár*")
-                
-                # Hasonló ingatlanok elemzése
-                similar_properties = model_df[
-                    (model_df['terulet_szam'].between(user_terulet-20, user_terulet+20))
-                ]
-                
-                if len(similar_properties) > 0:
-                    avg_price = similar_properties['teljes_ar_millió'].mean()
-                    min_price = similar_properties['teljes_ar_millió'].min()
-                    max_price = similar_properties['teljes_ar_millió'].max()
-                    
-                    st.write("**🏘️ Hasonló ingatlanok (±20 m²):**")
-                    st.write(f"- **Átlagár:** {avg_price:,.0f} M Ft")
-                    st.write(f"- **Ár tartomány:** {min_price:,.0f} - {max_price:,.0f} M Ft")
-                    st.write(f"- **Talált ingatlanok:** {len(similar_properties)} db")
-                    
-                    # Ár pozíció
-                    if predicted_price_million < avg_price:
-                        st.info(f"💡 A becsült ár {((avg_price - predicted_price_million)/avg_price*100):.1f}%-kal alacsonyabb az átlagnál")
-                    elif predicted_price_million > avg_price:
-                        st.info(f"💡 A becsült ár {((predicted_price_million - avg_price)/avg_price*100):.1f}%-kal magasabb az átlagnál")
-                    else:
-                        st.info("💡 A becsült ár az átlag körül alakul")
-                
-                # Árajánlási tartomány
-                confidence_interval = 0.1  # ±10%
-                lower_bound = predicted_price_million * (1 - confidence_interval)
-                upper_bound = predicted_price_million * (1 + confidence_interval)
-                
-                st.write("**💰 Ajánlott ár tartomány (±10%):**")
-                st.write(f"**{lower_bound:.1f} - {upper_bound:.1f} M Ft**")
-                
-                # Tényezők hatása
-                st.write("**📈 Modell tényezői:**")
-                feature_importance = abs(model.coef_)
-                importance_df = pd.DataFrame({
-                    'Tényező': [fn.replace('_', ' ').title() for fn in feature_names],
-                    'Hatás': feature_importance
-                })
-                importance_df = importance_df.sort_values('Hatás', ascending=False)
-                st.dataframe(importance_df, use_container_width=True)
-        
-        else:
-            st.warning("Nincs elegendő adat (minimum 10 ingatlan szükséges) az értékbecsléshez")
-            st.info(f"Jelenleg {len(model_df)} használható adat áll rendelkezésre")
-    
-    except Exception as e:
-        st.error(f"Hiba az értékbecslés során: {e}")
-        st.info("Ellenőrizd, hogy a CSV fájl tartalmazza a szükséges oszlopokat")
+
 
 if __name__ == "__main__":
-    main()
+    # Egyszerűen futtassuk az alapvető dashboard-ot
+    run_basic_dashboard()

@@ -7,6 +7,7 @@ This is a comprehensive real estate market analysis project focused on the **Kő
 ## 🚀 Key Features
 
 ### 🔍 Web Scraping Engine
+
 - **Anti-detection scraping** with hybrid Chrome CDP connection
 - **Cloudflare bypass** capabilities
 - **Comprehensive data extraction** from individual property pages
@@ -14,6 +15,7 @@ This is a comprehensive real estate market analysis project focused on the **Kő
 - **Floor detection** with XPath-based selectors
 
 ### 📈 Advanced Analytics Dashboard
+
 - **Interactive Streamlit dashboard** with professional visualizations
 - **Semantic text analysis** of property descriptions
 - **Price-text correlation** analysis
@@ -22,6 +24,7 @@ This is a comprehensive real estate market analysis project focused on the **Kő
 - **Market segmentation** by condition, floor, advertiser type
 
 ### 🤖 AI-Powered Features
+
 - **Automated listing text generation** with market data optimization
 - **Smart filtering** across multiple categories
 - **Personalized seller recommendations** for specific properties
@@ -60,18 +63,21 @@ real_agent_2/
 ## 🎯 Use Cases
 
 ### For Property Investors 💼
+
 - **Investment scoring** algorithm for property evaluation
 - **Market trend analysis** and price predictions
 - **Comparative market analysis** (CMA) tools
 - **ROI calculations** and risk assessment
 
 ### For Property Sellers 🏡
+
 - **Automated listing text generation** with SEO optimization
 - **Competitive pricing recommendations**
 - **Market positioning analysis**
 - **Optimal selling strategy** suggestions
 
 ### For Market Researchers 📈
+
 - **Comprehensive market statistics**
 - **Semantic analysis** of property descriptions
 - **Advertiser behavior patterns**
@@ -80,6 +86,7 @@ real_agent_2/
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 ```bash
 Python 3.11+
 Git
@@ -87,6 +94,7 @@ Chrome Browser (for scraping)
 ```
 
 ### Installation
+
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -106,6 +114,7 @@ playwright install
 ```
 
 ### Running the Dashboard
+
 ```bash
 # Activate virtual environment
 source ingatlan_agent_env/Scripts/activate
@@ -115,6 +124,7 @@ streamlit run ingatlan_dashboard_advanced.py
 ```
 
 ### Web Scraping
+
 ```bash
 # Start Chrome in debug mode (Windows)
 start chrome --remote-debugging-port=9222 --user-data-dir=chrome_debug
@@ -126,24 +136,28 @@ python scrape_property_details.py
 ## 📊 Dashboard Features
 
 ### 🏠 Property Analysis
+
 - **Market overview** with key metrics
 - **Price distribution** analysis
 - **Floor-based** pricing patterns
 - **Condition impact** on property values
 
 ### 📝 Semantic Analysis
+
 - **Keyword frequency** analysis
 - **Price-text correlation** studies
 - **Marketing strategy** insights
 - **Description optimization** recommendations
 
 ### 🎯 Investment Tools
+
 - **Property scoring** algorithm
 - **Comparative analysis** tables
 - **Risk assessment** metrics
 - **ROI calculations**
 
 ### 🤖 AI Features
+
 - **Smart property filtering**
 - **Automated listing generation**
 - **Market recommendations**
@@ -152,6 +166,7 @@ python scrape_property_details.py
 ## 📈 Sample Analysis Results
 
 Based on **57 properties** in Kőbánya-Újhegy:
+
 - **Average price**: ~900,000-1,200,000 HUF/m²
 - **Property conditions**: 42.1% from real estate agencies, 33.3% private sellers
 - **Floor premium**: Higher floors typically command 5-15% price premium
@@ -160,11 +175,13 @@ Based on **57 properties** in Kőbánya-Újhegy:
 ## 🔧 Configuration
 
 ### Scraping Settings
+
 - **Chrome debug port**: 9222
 - **Rate limiting**: Human-like delays
 - **Error handling**: Comprehensive retry mechanisms
 
 ### Dashboard Settings
+
 - **Caching**: Streamlit data caching for performance
 - **Responsive design**: Multi-column layouts
 - **Export options**: CSV data export functionality
@@ -172,11 +189,13 @@ Based on **57 properties** in Kőbánya-Újhegy:
 ## 🚨 Important Notes
 
 ### Legal Compliance
+
 - **Respect robots.txt** and website terms of service
 - **Rate limiting** implemented to avoid server overload
 - **Personal use** only - commercial use may require permission
 
 ### Data Privacy
+
 - **No personal data** storage from listings
 - **Public information** only
 - **GDPR compliant** data handling
@@ -196,12 +215,15 @@ This project is for educational and research purposes. Please respect website te
 ## 🆘 Troubleshooting
 
 ### Common Issues
+
 - **Chrome connection failed**: Ensure Chrome is running with debug flags
 - **Module not found**: Check virtual environment activation
 - **Data loading errors**: Verify CSV file formats and encoding
 
 ### Support
+
 Create an issue in the repository with:
+
 - Error messages
 - System information
 - Steps to reproduce
