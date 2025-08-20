@@ -60,7 +60,7 @@ chrome_debug/
 
 # CSV data files (keep final dataset but ignore intermediate files)
 ingatlan_*.csv
-!ingatlan_reszletes_20250819_123937.csv
+!ingatlan_reszletes_elado_haz_erd_erdliget_20250820_014506.csv
 
 # Batch files (might contain sensitive paths)
 *.bat
