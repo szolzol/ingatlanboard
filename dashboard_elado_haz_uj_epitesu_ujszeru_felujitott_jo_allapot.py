@@ -9,80 +9,40 @@ import glob
 import warnings
 warnings.filterwarnings('ignore')
 
-# Dinamikus location_name kinyerése a fájlnévből - ÚJÍTVA: egyszerűsített formátum
+# Dinamikus location_name kinyerése a fájlnévből - ÚJÍTVA: enhanced text features
 def get_location_from_filename():
-    # Új egyszerűsített formátum: ingatlan_reszletes_uepitve_kozott_epitve_utan_ii_ker_20250821_165032.csv
-    detailed_files = glob.glob("ingatlan_reszletes_*.csv")
-    if detailed_files:
-        latest_file = max(detailed_files)
-        print(f"📂 Legújabb CSV: {latest_file}")
-        filename_parts = latest_file.replace('.csv', '').split('_')
-        print(f"🔍 Fájlnév részek: {filename_parts}")
-        
-        # Az utolsó előtti 2 rész az időbélyeg (pl: 20250821, 165032)
-        # Keressük meg a földrajzi részt
-        location_parts = []
-        
-        # Végigmegyünk a részeken és keressük a földrajzi információt
-        for i, part in enumerate(filename_parts):
-            # Ha Budapest kerület formátum (i, ii, iii, xii, stb.)
-            if part in ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx', 'xxi', 'xxii', 'xxiii']:
-                # Előző rész "budapest" lehet
-                if i > 0 and filename_parts[i-1] == 'budapest':
-                    location_parts = ['budapest', part]
-                else:
-                    location_parts = [part]  # Implicit Budapest
-                
-                # Következő rész "ker" lehet
-                if i + 1 < len(filename_parts) and filename_parts[i + 1] == 'ker':
-                    location_parts.append('ker')
-                break
-            
-            # Ha külváros (budaors, erd, stb.)
-            elif part in ['budaors', 'erd', 'erdliget']:
-                location_parts = [part]
-                break
-        
-        if location_parts:
-            # Formázás
-            if 'ker' in location_parts:
-                # Budapest kerület formátum
-                if len(location_parts) >= 2:
-                    kerulet_szam = location_parts[-2] if location_parts[-1] == 'ker' else location_parts[0]
-                    return f"{kerulet_szam.upper()}. KERÜLET"
-            else:
-                # Külváros formátum
-                return location_parts[0].capitalize()
-    
-    # Fallback: régi enhanced fájlok
+    # Új formátum: ingatlan_reszletes_enhanced_text_features_elado_haz_80_600_mFt_xii_ker_20_20250821_154446.csv
     enhanced_files = glob.glob("ingatlan_reszletes_enhanced_text_features_*.csv")
     if enhanced_files:
         latest_file = max(enhanced_files)
+        # Példa: "ingatlan_reszletes_enhanced_text_features_elado_haz_80_600_mFt_xii_ker_20_20250821_154446.csv"
         filename_parts = latest_file.replace('.csv', '').split('_')
         if len(filename_parts) >= 13:
+            # Keresési paraméterei: elado_haz_80_600_mFt_xii_ker_20
+            # xii_ker_20 rész kinyerése (10, 11, 12 indexek)
             location_parts = []
-            for i in range(10, len(filename_parts)-2):
+            for i in range(10, len(filename_parts)-2):  # utolsó 2 elem időbélyeg
                 part = filename_parts[i]
-                if part.isdigit() and len(part) == 8:
+                if part.isdigit() and len(part) == 8:  # 20250821 dátum
                     break
                 location_parts.append(part)
             
             if location_parts:
                 location_str = ' '.join(location_parts).replace('ker', 'kerület')
-                return location_str.upper()
+                return location_str.upper()  # "XII KERÜLET 20"
     
-    # Fallback: régi modern fájlok
+    # Fallback: régi formátum
     modern_files = glob.glob("ingatlan_modern_enhanced_*.csv")
     if modern_files:
         latest_file = max(modern_files)
+        # Például: "ingatlan_modern_enhanced_budaors_20250821.csv" -> "budaors"
         filename_parts = latest_file.replace('.csv', '').split('_')
         if len(filename_parts) >= 4:
             return filename_parts[3].capitalize()
-    
     return "Keresési lista"  # default
 
 location_name = get_location_from_filename()
-timestamp = datetime.now().strftime("%Y.%m.%d %H:%M")
+timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
 # Streamlit konfiguráció
 st.set_page_config(
@@ -93,14 +53,14 @@ st.set_page_config(
 )
 
 def load_and_process_data():
-    """Adatok betöltése és feldolgozása - ÚJÍTVA: egyszerűsített formátum"""
+    """Adatok betöltése és feldolgozása - ÚJÍTVA: enhanced text features"""
     try:
-        # ÚJ Egyszerűsített CSV betöltése (prioritás)
+        # ÚJ Enhanced text features CSV betöltése (prioritás)
         import glob
-        detailed_files = glob.glob("ingatlan_reszletes_*.csv")
-        if detailed_files:
-            latest_file = max(detailed_files)
-            print(f"📊 Részletes CSV betöltése: {latest_file}")
+        enhanced_files = glob.glob("ingatlan_reszletes_enhanced_text_features_*.csv")
+        if enhanced_files:
+            latest_file = max(enhanced_files)
+            print(f"📊 Enhanced CSV betöltése: {latest_file}")
             df = pd.read_csv(latest_file, encoding='utf-8-sig', sep='|')
         else:
             # Fallback: régi modern enhanced CSV
@@ -110,7 +70,7 @@ def load_and_process_data():
                 print(f"📊 Modern CSV betöltése: {latest_file}")
                 df = pd.read_csv(latest_file, encoding='utf-8-sig', sep='|')
             else:
-                st.error("Nincs megfelelő CSV fájl!")
+                st.error("Nincs megfelelő Enhanced CSV fájl!")
                 return pd.DataFrame()
         
         # Numerikus konverziók
@@ -253,19 +213,13 @@ def main():
     if 'teljes_ar_millió' in df.columns and df['teljes_ar_millió'].notna().any():
         min_price = float(df['teljes_ar_millió'].min())
         max_price = float(df['teljes_ar_millió'].max())
-        
-        # Ha min és max azonos, akkor nem csinálunk slider-t
-        if min_price == max_price:
-            st.sidebar.write(f"💰 **Ár:** {min_price:.1f} M Ft")
-            price_range = (min_price, max_price)
-        else:
-            price_range = st.sidebar.slider(
-                "💰 Ár (M Ft)", 
-                min_value=min_price, 
-                max_value=max_price, 
-                value=(min_price, max_price),
-                step=5.0
-            )
+        price_range = st.sidebar.slider(
+            "💰 Ár (M Ft)", 
+            min_value=min_price, 
+            max_value=max_price, 
+            value=(min_price, max_price),
+            step=5.0
+        )
     else:
         price_range = None
     
@@ -273,19 +227,13 @@ def main():
     if 'terulet_szam' in df.columns and df['terulet_szam'].notna().any():
         min_area = int(df['terulet_szam'].min())
         max_area = int(df['terulet_szam'].max())
-        
-        # Ha min és max azonos, akkor nem csinálunk slider-t
-        if min_area == max_area:
-            st.sidebar.write(f"📐 **Terület:** {min_area} m²")
-            area_range = (min_area, max_area)
-        else:
-            area_range = st.sidebar.slider(
-                "📐 Terület (m²)", 
-                min_value=min_area, 
-                max_value=max_area, 
-                value=(min_area, max_area),  # VÁLTOZÁS: teljes tartomány alapértelmezett
-                step=10
-            )
+        area_range = st.sidebar.slider(
+            "📐 Terület (m²)", 
+            min_value=min_area, 
+            max_value=max_area, 
+            value=(min_area, max_area),  # VÁLTOZÁS: teljes tartomány alapértelmezett
+            step=10
+        )
     else:
         area_range = None
     
@@ -293,18 +241,12 @@ def main():
     if 'szobak_szam' in df.columns and df['szobak_szam'].notna().any():
         min_rooms = int(df['szobak_szam'].min())
         max_rooms = int(df['szobak_szam'].max())
-        
-        # Ha min és max azonos, akkor nem csinálunk slider-t
-        if min_rooms == max_rooms:
-            st.sidebar.write(f"🏠 **Szobaszám:** {min_rooms}")
-            rooms_range = (min_rooms, max_rooms)
-        else:
-            rooms_range = st.sidebar.slider(
-                "🏠 Szobaszám", 
-                min_value=min_rooms, 
-                max_value=max_rooms, 
-                value=(min_rooms, max_rooms)  # VÁLTOZÁS: teljes tartomány alapértelmezett
-            )
+        rooms_range = st.sidebar.slider(
+            "🏠 Szobaszám", 
+            min_value=min_rooms, 
+            max_value=max_rooms, 
+            value=(min_rooms, max_rooms)  # VÁLTOZÁS: teljes tartomány alapértelmezett
+        )
     else:
         rooms_range = None
     

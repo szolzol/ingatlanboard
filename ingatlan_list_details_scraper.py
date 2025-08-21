@@ -14,6 +14,7 @@ import asyncio
 import os
 import re
 import sys
+import random
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import pandas as pd
@@ -29,91 +30,117 @@ class IngatlanSzovegelemzo:
     def __init__(self):
         """Inicializálja a kategóriákat és kulcsszavakat"""
         
-        # ÉRTÉKBEFOLYÁSOLÓ KATEGÓRIÁK ÉS KULCSSZAVAIK
+        # 🔥 MODERN ÁRFELHAJTÓ KATEGÓRIÁK - 2025 INGATLANPIACI TRENDEK
         self.kategoriak = {
-            'LUXUS_MINOSEG': {
+            # 🌞 ZÖLD ENERGIA & FENNTARTHATÓSÁG - TOP ÁRFELHAJTÓ 2025
+            'ZOLD_ENERGIA_PREMIUM': {
                 'kulcsszavak': [
-                    'luxus', 'prémium', 'elegáns', 'exkluzív', 'különleges', 'lenyűgöző',
-                    'kivételes', 'egyedi', 'reprezentatív', 'igényes', 'stílusos',
-                    'designer', 'magas színvonal', 'minőségi', 'design', 'dizájn'
+                    'napelem', 'napelempark', 'fotovoltaikus', 'szoláris', 'napenergia',
+                    'geotermikus', 'geotermia', 'földhő', 'hőszivattyú', 'hőszivattyús',
+                    'levegő-víz hőszivattyú', 'föld-víz hőszivattyú', 'inverteres',
+                    'hibrid fűtés', 'megújuló energia', 'önellátó', 'energiafüggetlenség',
+                    'netzero', 'carbon neutral', 'passzívház', 'energiahatékony',
+                    'AA+ energetikai', '0 rezsikölts', 'elektromos töltő', 'e-töltő'
                 ],
-                'pontszam': 3.0
+                'pontszam': 4.5  # Legnagyobb árfelhajtó hatás 2025-ben
             },
             
-            'KERT_KULSO': {
+            # 🏊 WELLNESS & LUXUS REKREÁCIÓ - PRÉMIUM KATEGÓRIA
+            'WELLNESS_LUXURY': {
                 'kulcsszavak': [
-                    'parkosított', 'kert', 'telek', 'udvar', 'kertészkedés', 'gyümölcsfa',
-                    'növények', 'fű', 'pázsit', 'virágos', 'árnyékos', 'napos kert',
-                    'pergola', 'terasz', 'erkély', 'balkon', 'panoráma', 'kilátás',
-                    'természet', 'zöld', 'park', 'liget'
+                    'úszómedence', 'infinity pool', 'úszómedence fedett', 'jakuzzi',
+                    'spa', 'szauna', 'gőzfürdő', 'wellness részleg', 'masszázsszoba',
+                    'fitneszterem', 'konditerem', 'sportpálya', 'teniszpálya',
+                    'bor pince', 'borospince', 'privát mozi', 'házi mozi',
+                    'panoráma erkély', 'tetőterasz', 'sky bar', 'privát lift',
+                    'szolgálati lakás', 'vendégház', 'poolház'
                 ],
-                'pontszam': 2.5
+                'pontszam': 4.0  # Nagy prémium érték
             },
             
-            'PARKOLAS_GARAGE': {
+            # 🏠 SMART HOME & TECHNOLÓGIA - 2025 TREND
+            'SMART_TECHNOLOGY': {
                 'kulcsszavak': [
-                    'garázs', 'parkoló', 'autó', 'gépkocsi', 'állás', 'fedett',
-                    'saját parkoló', 'dupla garázs', 'többállásos', 'behajtó',
-                    'kocsibeálló', 'két autó', '2 autó', 'parkolási lehetőség'
+                    'okos otthon', 'smart home', 'okos vezérlés', 'app vezérlés',
+                    'voice control', 'automatizált', 'riasztórendszer', 'biztonsági',
+                    'kamerarendszer', 'beléptető', 'ujjlenyomat', 'arcfelismerés',
+                    'központi porszívó', 'hangosítás', 'multiroom', 'kábelezés',
+                    'strukturált hálózat', 'fiber', 'gigabit', '5G ready',
+                    'elektromos redőny', 'árnyékoló automatika', 'időzíthető'
                 ],
-                'pontszam': 2.0
+                'pontszam': 3.5  # Teknológiai prémium
             },
             
-            'TERULET_MERET': {
+            # 💎 PRÉMIUM DESIGN & ANYAGHASZNÁLAT
+            'PREMIUM_DESIGN': {
                 'kulcsszavak': [
-                    'tágas', 'nagy', 'széles', 'hatalmas', 'óriás', 'bőséges',
-                    'tér', 'alapterület', 'hasznos', 'nappali', 'hálószoba',
-                    'szoba', 'helyiség', 'kamra', 'tároló', 'pince', 'tetőtér',
-                    'm2', 'négyzetméter', 'quadratmeter'
+                    'prémium', 'luxus', 'exkluzív', 'egyedi tervezés', 'építész tervezett',
+                    'designer', 'belsőépítész', 'olasz csempe', 'márvány', 'gránit',
+                    'tömör fa', 'parkett', 'természetes anyagok', 'kőburkolat',
+                    'nemesacél', 'inox', 'kristály', 'LED világítás', 'rejtett világítás',
+                    'Miele', 'Bosch', 'Gaggenau', 'prémium konyhagép', 'beépített',
+                    'márkás bútor', 'olasz bútor', 'egyedi bútor'
                 ],
-                'pontszam': 2.0
+                'pontszam': 3.8  # Design prémium
             },
             
-            'KOMFORT_EXTRA': {
+            # 🚗 MODERN PARKOLÁS & GARÁZS
+            'PREMIUM_PARKING': {
                 'kulcsszavak': [
-                    'klíma', 'légkondi', 'szauna', 'medence', 'jakuzzi', 'wellness',
-                    'hőszivattyú', 'napelem', 'okos otthon', 'riasztó', 'kamerás',
-                    'központi porszívó', 'padlófűtés', 'geotermikus',
-                    'hangosítás', 'internet', 'kábelezés', 'optika'
+                    'dupla garázs', 'tripla garázs', 'többállásos garázs', 'fedett parkoló',
+                    'automata garázsajtó', 'távnyitós', 'elektromos töltő', 'tesla töltő',
+                    'műhelyrész', 'tároló garázs', 'fűtött garázs', 'dupla behajtó',
+                    'körbehajtó', 'vendég parkoló', 'több autó', '4+ autó'
                 ],
-                'pontszam': 2.5
+                'pontszam': 2.8  # Parkolás prémium
             },
             
-            'ALLAPOT_FELUJITAS': {
+            # 🌿 KIVÁLÓ LOKÁCIÓ & KÖRNYEZET
+            'PREMIUM_LOCATION': {
                 'kulcsszavak': [
-                    'felújított', 'renovált', 'korszerűsített', 'új', 'frissen',
-                    'most készült', 'újépítés', 'modernizált', 'átépített',
-                    'beköltözhető', 'kulcsrakész', 'azonnal', 'költözés'
+                    'csendes utca', 'zsákutca', 'panorámás', 'erdőszéli', 'vízparti',
+                    'dunai panoráma', 'budai hegyek', 'zöldövezet', 'park szomszédság',
+                    'villa negyed', 'reprezentatív környezet', 'diplomata negyed',
+                    'golfpálya közel', 'nemzetközi iskola', 'elit környezet',
+                    'privát utca', 'őrzött terület', 'biztonsági szolgálat'
                 ],
-                'pontszam': 2.0
+                'pontszam': 3.2  # Lokációs prémium
             },
             
-            'LOKACIO_KORNYEZET': {
+            # 🏗️ ÉPÍTÉSI MINŐSÉG & ÁLLAPOT
+            'BUILD_QUALITY': {
                 'kulcsszavak': [
-                    'csendes', 'békés', 'nyugodt', 'családi', 'villa negyed',
-                    'központi', 'közel', 'közlekedés', 'iskola', 'óvoda',
-                    'bolt', 'bevásárlás', 'játszótér', 'sport', 'erdő', 'domb'
+                    'kulcsrakész', 'újépítésű', 'nulla ráfordítás', 'költözhető',
+                    'teljes felújítás', 'prémium felújítás', 'generálkivitelező',
+                    'minőségi kivitelezés', 'új gépészet', 'új elektromos',
+                    'új tető', 'új nyílászárók', 'hőszigetelés', 'külső szigetelés',
+                    'új fűtés', 'új burkolatok', 'garancia', 'eredetiség'
                 ],
-                'pontszam': 1.5
+                'pontszam': 2.5  # Minőségi prémium
             },
             
-            'FUTES_ENERGIA': {
-                'kulcsszavak': [
-                    'gáz', 'távfűtés', 'kandalló', 'cserépkályha', 'fatűzés',
-                    'energiatakarékos', 'szigetelt', 'alacsony rezsi',
-                    'hőszigetelés', 'műanyag ablak', 'redőny'
-                ],
-                'pontszam': 1.2
-            },
-            
+            # ⚠️ NEGATÍV ÁRBEFOLYÁSOLÓ TÉNYEZŐK - CSÖKKENTŐ HATÁS
             'NEGATIV_TENYEZOK': {
                 'kulcsszavak': [
-                    'felújítandó', 'felújításra szorul', 'régi', 'rossz állapot',
-                    'problémás', 'javítandó', 'cserélendő', 'hiányos',
-                    'beázás', 'nedves', 'penész', 'rezsikölts', 'drága fűtés',
-                    'forgalmas', 'zajos', 'busy'
+                    # Állapotproblémák
+                    'felújítandó', 'felújításra szorul', 'rossz állapot', 'elhanyagolt',
+                    'problémás', 'javítandó', 'cserélendő', 'hiányos', 'hiányosságok',
+                    'beázás', 'nedvesség', 'penész', 'rothadás', 'repedt', 'repedések',
+                    
+                    # Költségnövelő tényezők
+                    'drága fűtés', 'magas rezsi', 'rezsikölts', 'energiaigényes',
+                    'rossz szigetelés', 'régi fűtés', 'régi gépészet', 'cserélendő tető',
+                    
+                    # Környezeti problémák
+                    'forgalmas', 'zajos', 'zajterhelés', 'közút mellett', 'vasút melletti',
+                    'ipari környezet', 'szennyezett', 'bűzös', 'kellemetlen',
+                    'földút', 'rossz megközelítés', 'közlekedés nehéz',
+                    
+                    # Jogias és értékcsökkentő
+                    'jogi probléma', 'per', 'zárlat', 'hagyaték', 'kényszerű eladás',
+                    'sürgős', 'gyors eladás', 'alku', 'alkuképes', 'áron alul'
                 ],
-                'pontszam': -1.5
+                'pontszam': -2.0  # Negatív hatás
             }
         }
     
@@ -257,7 +284,7 @@ class KomplettIngatlanPipeline:
                 return f"{url}{separator}limit=300"
     
     def _extract_location(self, url):
-        """Lokáció kinyerése URL-ből fájlnév generálásához"""
+        """Lokáció kinyerése URL-ből fájlnév generálásához - CSAK FÖLDRAJZI HELYSÉG"""
         try:
             path = urlparse(url).path
             # Keresési rész megtalálása
@@ -272,11 +299,84 @@ class KomplettIngatlanPipeline:
             if not search_part and path_parts:
                 search_part = path_parts[-1]
             
-            # Biztonságos fájlnév
-            safe_name = re.sub(r'[^\w\-_+]', '_', search_part)
-            safe_name = safe_name.replace('+', '_').replace('-', '_')
+            # FÖLDRAJZI LOKÁCIÓ KINYERÉSE
+            # Eltávolítjuk a típus és állapot szűrőket, csak a helységet hagyjuk meg
+            location_only = search_part
+            
+            # Eltávolítjuk az ingatlan típust (elado+haz, elado+lakas, stb.)
+            location_only = re.sub(r'(elado|kiado|berlet)\+[^+]*\+?', '', location_only)
+            
+            # Eltávolítjuk az állapot szűrőket
+            allapot_szurok = [
+                'uj_epitesu', 'ujszeru', 'felujitott', 'jo_allapot', 'kituno_allapot', 
+                'kozepes_allapot', 'felujitando', 'rossz_allapot', 'bonthato',
+                'uj-epitesu', 'jo-allapot', 'kituno-allapot', 'kozepes-allapot',
+                'epitesu', 'uj', 'ujszeru', 'felujitott', 'jo', 'allapot'  # Részletek is
+            ]
+            
+            for szuro in allapot_szurok:
+                location_only = location_only.replace(f'+{szuro}', '').replace(f'{szuro}+', '').replace(szuro, '')
+            
+            # Ár szűrők eltávolítása (pl: 80-500-mFt, 80-500-mft, 100_200_m_ft)
+            location_only = re.sub(r'\+?\d+[\-_]\d+[\-_]?m?[Ff]t\+?', '', location_only)
+            location_only = re.sub(r'\+?\d+_\d+_m_ft\+?', '', location_only)
+            location_only = re.sub(r'\+?\d+\-\d+\-m\-?ft\+?', '', location_only)
+            location_only = re.sub(r'\+?\d+\-\d+\-mft\+?', '', location_only)
+            
+            # Egyedi számok eltávolítása (pl. "20" négyzetméter vagy egyéb szűrők) 
+            location_only = re.sub(r'\+?\d{1,3}\+?', '', location_only)
+            
+            # Dupla + jelek eltávolítása és tisztítás
+            location_only = re.sub(r'\+{2,}', '+', location_only)
+            location_only = location_only.strip('+')
+            
+            # Ha üres, akkor próbáljunk kivenni budapest/helység részeket
+            if not location_only or len(location_only) < 3:
+                # Eredeti search_part-ból keressük a budapest, kerület, vagy helység részeket
+                helyseg_reszek = []
+                parts = search_part.replace('+', ' ').replace('-', ' ').split()
+                
+                budapest_found = False
+                for i, part in enumerate(parts):
+                    part_lower = part.lower()
+                    # Budapest vagy kerület
+                    if part_lower in ['budapest', 'bp']:
+                        helyseg_reszek.append('budapest')
+                        budapest_found = True
+                    elif 'kerulet' in part_lower or 'ker' in part_lower:
+                        # Előző rész keresése (pl: ii, xiii, 12, stb.)
+                        if i > 0:
+                            prev_part = parts[i-1].lower()
+                            if prev_part in ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx', 'xxi', 'xxii', 'xxiii'] or prev_part.isdigit():
+                                helyseg_reszek.append(f'{prev_part}_ker')
+                        elif not budapest_found:
+                            helyseg_reszek.append('kerulet')
+                    elif part_lower in ['budaors', 'budaörs', 'erd', 'torokbalint', 'törökbálint', 'szentendre', 'godllo', 'gödöllő', 'vac', 'vác', 'dunakeszi', 'pilisvorosvar', 'piliscsaba']:
+                        helyseg_reszek.append(part_lower.replace('ö', 'o').replace('ő', 'o').replace('á', 'a').replace('é', 'e'))
+                
+                if helyseg_reszek:
+                    location_only = '_'.join(helyseg_reszek)
+                else:
+                    # Utolsó esély: első 2-3 értelmesnek tűnő rész
+                    meaningful_parts = []
+                    for part in parts[:4]:  # Első 4 részt nézzük
+                        part_lower = part.lower()
+                        if part_lower not in ['elado', 'kiado', 'berlet', 'haz', 'lakas', 'telek', 'iroda', 'uzlet'] and len(part) > 2:
+                            meaningful_parts.append(part_lower)
+                        if len(meaningful_parts) >= 2:  # Max 2 rész
+                            break
+                    location_only = '_'.join(meaningful_parts) if meaningful_parts else 'ingatlan_kereses'
+            
+            # Biztonságos fájlnév készítése
+            safe_name = re.sub(r'[^\w\-_]', '_', location_only)
+            safe_name = safe_name.replace('-', '_')
+            safe_name = re.sub(r'_{2,}', '_', safe_name)
+            safe_name = safe_name.strip('_')
+            
             return safe_name[:50] if safe_name else "ingatlan_kereses"
-        except:
+            
+        except Exception as e:
+            print(f"⚠️ Location extraction hiba: {e}")
             return "ingatlan_kereses"
     
     async def step_2_list_scraping(self):
@@ -381,8 +481,32 @@ class KomplettIngatlanPipeline:
             if success:
                 print(f"\n✅ DASHBOARD GENERÁLÁS SIKERES!")
                 print(f"📁 Dashboard fájl: {self.dashboard_file}")
-                print(f"\n🚀 DASHBOARD INDÍTÁSA:")
-                print(f"   streamlit run {self.dashboard_file}")
+                print(f"\n🚀 DASHBOARD AUTOMATIKUS INDÍTÁSA...")
+                
+                # Streamlit dashboard automatikus indítása
+                try:
+                    # Egyedi port keresése (8501-től kezdve)
+                    port = self._find_available_port(8501)
+                    
+                    print(f"🌐 Dashboard indítása porton: {port}")
+                    print(f"📋 Parancs: streamlit run {self.dashboard_file} --server.port={port}")
+                    
+                    # Streamlit indítása háttérben
+                    process = subprocess.Popen([
+                        sys.executable, '-m', 'streamlit', 'run', self.dashboard_file,
+                        '--server.port', str(port),
+                        '--server.headless', 'true'
+                    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    
+                    print(f"✅ Dashboard elindítva!")
+                    print(f"🔗 Elérés: http://localhost:{port}")
+                    print(f"📊 Process ID: {process.pid}")
+                    print(f"\n💡 A dashboard fut a háttérben. Leállítás: Ctrl+C vagy process kill")
+                    
+                except Exception as e:
+                    print(f"⚠️ Dashboard automatikus indítás sikertelen: {e}")
+                    print(f"🔧 Manuális indítás: streamlit run {self.dashboard_file}")
+                
                 return True
             else:
                 print("❌ Dashboard generálás sikertelen")
@@ -392,15 +516,29 @@ class KomplettIngatlanPipeline:
             print(f"❌ Dashboard hiba: {e}")
             return False
     
+    def _find_available_port(self, start_port=8501):
+        """Elérhető port keresése Streamlit számára"""
+        import socket
+        
+        port = start_port
+        while port < start_port + 20:  # Maximum 20 portot próbál
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('localhost', port))
+                    return port
+            except OSError:
+                port += 1
+        return start_port  # Ha nem talál, visszaadja az eredetit
+    
     def _create_custom_dashboard(self):
         """Dashboard template testreszabása"""
         try:
-            # Template beolvasása
-            if not os.path.exists('ingatlan_dashboard_advanced.py'):
+            # streamlit_app.py template beolvasása
+            if not os.path.exists('streamlit_app.py'):
                 print("❌ Dashboard template nem található!")
                 return False
             
-            with open('ingatlan_dashboard_advanced.py', 'r', encoding='utf-8') as f:
+            with open('streamlit_app.py', 'r', encoding='utf-8') as f:
                 template = f.read()
             
             # Lokáció név formázása megjelenítéshez
@@ -409,23 +547,17 @@ class KomplettIngatlanPipeline:
             display_name = re.sub(r'\bHaz\b', 'Ház', display_name) 
             display_name = re.sub(r'\bLakas\b', 'Lakás', display_name)
             
-            # Template módosítások
+            # Template módosítások - streamlit_app.py alapján
             customizations = {
-                # Címek
-                r'🏠 Kőbánya-Újhegyi Lakótelep - Részletes Piaci Elemzés': f'🏠 {display_name} - Részletes Piaci Elemzés',
-                r'Kőbánya-Újhegyi Lakótelep': display_name,
-                r'KŐBÁNYA-ÚJHEGYI LAKÓTELEP': display_name.upper(),
-                r'Kőbánya-Újhegy': display_name,
+                # Címek és főbb szövegek
+                r'Erdligeti Házak Dashboard': f'{display_name} Dashboard',
+                r'🏠 Eladó Ház Erd Erdliget - Ingatlan Dashboard': f'🏠 {display_name} - Ingatlan Dashboard',
+                r'ELADÓ HÁZ ERD ERDLIGET - EGYSZERŰ DASHBOARD': f'{display_name.upper()} - DASHBOARD',
+                r'Eladó Ház Erd Erdliget': display_name,
                 
-                # CSV fájl referencia
-                r'ingatlan_reszletes_\d{8}_\d{6}\.csv': self.details_csv_file,
-                
-                # Szöveges említések  
-                r'a Kőbánya-Újhegyi lakótelepről': f'a(z) {display_name} területről',
-                r'Kőbánya X\. kerület, Újhegyi lakótelep': f'{display_name} környéke',
-                
-                # Page config
-                r'🏠 Kőbánya-Újhegy Ingatlan Piaci Elemzés': f'🏠 {display_name} Piaci Elemzés'
+                # CSV fájlnév lecserélése a legfrissebb enhanced fájlra  
+                r'"ingatlan_reszletes_enhanced_text_features\.csv"': f'"{self.details_csv_file}"',
+                r'ingatlan_reszletes_enhanced_text_features\.csv': self.details_csv_file,
             }
             
             # Módosítások alkalmazása
@@ -433,38 +565,35 @@ class KomplettIngatlanPipeline:
             for pattern, replacement in customizations.items():
                 customized = re.sub(pattern, replacement, customized)
             
-            # Load_data függvény egyszerűsítése
-            load_data_new = f'''def load_data():
-    """Adatok betöltése"""
-    try:
-        df = pd.read_csv("{self.details_csv_file}", encoding='utf-8-sig')
-        
-        # Alapvető ellenőrzések
-        if 'link' not in df.columns:
-            st.error("Hiányzó oszlop: link")
-            return pd.DataFrame()
-        
-        # Numerikus konverziók
-        for col in ['ar_szam', 'teljes_ar_szam', 'terulet_szam', 'szobak']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-        return df
-        
-    except FileNotFoundError:
-        st.error("CSV fájl nem található!")
-        return pd.DataFrame()
-    except Exception as e:
-        st.error(f"Betöltési hiba: {{e}}")
-        return pd.DataFrame()'''
-            
-            # Load_data csere
+            # Load_data függvény frissítése az új CSV fájlnévvel és pipe elválasztóval
+            # Keressük és cseréljük le a pd.read_csv hívásokat pipe elválasztóval
             customized = re.sub(
-                r'def load_data\(\):.*?return pd\.DataFrame\(\)',
-                load_data_new,
-                customized,
-                flags=re.DOTALL
+                r'pd\.read_csv\("ingatlan_reszletes_enhanced_text_features_elado_haz_80_500_mFt_budaors_20250821_000513\.csv", encoding=\'utf-8-sig\'\)',
+                f'pd.read_csv("{self.details_csv_file}", encoding=\'utf-8-sig\', sep=\'|\')',
+                customized
             )
+            
+            # Általános pd.read_csv lecserélése a megfelelő fájlnévvel és pipe elválasztóval
+            customized = re.sub(
+                r'pd\.read_csv\("([^"]*enhanced_text_features[^"]*\.csv)", encoding=\'utf-8-sig\'\)',
+                f'pd.read_csv("{self.details_csv_file}", encoding=\'utf-8-sig\', sep=\'|\')',
+                customized
+            )
+            
+            # Dinamikus szemantikai elemzés generálása
+            semantic_insights = self._generate_dynamic_semantic_insights()
+            
+            # Hardkódolt semantic_insights lecserélése
+            if semantic_insights:
+                # Keressük a teljes semantic_insights dictionary-t és cseréljük le dinamikusra
+                semantic_pattern = r'semantic_insights\s*=\s*\{.*?\n\s+\}'
+                semantic_replacement = f"semantic_insights = {semantic_insights}"
+                
+                # Ha nem találjuk az első formában, próbáljuk hosszabb verzióval
+                if not re.search(semantic_pattern, customized, flags=re.DOTALL):
+                    semantic_pattern = r'semantic_insights\s*=\s*\{[^}]*?\n[^}]*?\n[^}]*?\n[^}]*?\n[^}]*?\n[^}]*?\n[^}]*?\n[^}]*?\n\s+\}'
+                
+                customized = re.sub(semantic_pattern, semantic_replacement, customized, flags=re.DOTALL)
             
             # Dashboard mentése
             with open(self.dashboard_file, 'w', encoding='utf-8') as f:
@@ -475,6 +604,105 @@ class KomplettIngatlanPipeline:
         except Exception as e:
             print(f"❌ Template hiba: {e}")
             return False
+    
+    def _generate_dynamic_semantic_insights(self):
+        """Dinamikus szemantikai elemzés generálása a modern árfelhajtó trendek alapján"""
+        try:
+            import pandas as pd
+            
+            # CSV betöltése
+            df = pd.read_csv(self.details_csv_file, encoding='utf-8-sig', sep='|')
+            total_count = len(df)
+            
+            if total_count == 0:
+                return None
+            
+            # Szemantikai kategóriák dinamikus számítása - ÚJ MODERN KATEGÓRIÁK
+            insights = {}
+            
+            # 🌞 ZÖLD ENERGIA & FENNTARTHATÓSÁG - TOP ÁRFELHAJTÓ 2025
+            zold_pont_col = next((col for col in df.columns if 'zold_energia' in col.lower() and 'pont' in col.lower()), None)
+            zold_van_col = next((col for col in df.columns if 'zold_energia' in col.lower() and 'van_' in col.lower()), None)
+            if zold_pont_col and zold_van_col:
+                zold_count = int((df[zold_van_col] > 0).sum())
+                zold_avg_pont = float(df[zold_pont_col].mean())
+                insights['🌞 Zöld Energia Premium'] = {
+                    'hirdetések': zold_count,
+                    'arány': round(zold_count/total_count*100, 1),
+                    'átlag_pontszám': round(zold_avg_pont, 2),
+                    'leírás': 'Napelem, geotermikus, hőszivattyú, energiafüggetlenség'
+                }
+            
+            # 🏊 WELLNESS & LUXUS REKREÁCIÓ
+            wellness_pont_col = next((col for col in df.columns if 'wellness' in col.lower() and 'pont' in col.lower()), None)
+            wellness_van_col = next((col for col in df.columns if 'wellness' in col.lower() and 'van_' in col.lower()), None)
+            if wellness_pont_col and wellness_van_col:
+                wellness_count = int((df[wellness_van_col] > 0).sum())
+                wellness_avg_pont = float(df[wellness_pont_col].mean())
+                insights['🏊 Wellness & Luxury'] = {
+                    'hirdetések': wellness_count,
+                    'arány': round(wellness_count/total_count*100, 1),
+                    'átlag_pontszám': round(wellness_avg_pont, 2),
+                    'leírás': 'Úszómedence, jakuzzi, szauna, spa, fitness'
+                }
+            
+            # 🏠 SMART HOME & TECHNOLÓGIA
+            smart_pont_col = next((col for col in df.columns if 'smart' in col.lower() and 'pont' in col.lower()), None)
+            smart_van_col = next((col for col in df.columns if 'smart' in col.lower() and 'van_' in col.lower()), None)
+            if smart_pont_col and smart_van_col:
+                smart_count = int((df[smart_van_col] > 0).sum())
+                smart_avg_pont = float(df[smart_pont_col].mean())
+                insights['� Smart Technology'] = {
+                    'hirdetések': smart_count,
+                    'arány': round(smart_count/total_count*100, 1),
+                    'átlag_pontszám': round(smart_avg_pont, 2),
+                    'leírás': 'Okos otthon, automatizáció, biztonsági rendszer'
+                }
+            
+            # 💎 PRÉMIUM DESIGN & ANYAGHASZNÁLAT
+            premium_pont_col = next((col for col in df.columns if 'premium' in col.lower() and 'pont' in col.lower()), None)
+            premium_van_col = next((col for col in df.columns if 'premium' in col.lower() and 'van_' in col.lower()), None)
+            if premium_pont_col and premium_van_col:
+                premium_count = int((df[premium_van_col] > 0).sum())
+                premium_avg_pont = float(df[premium_pont_col].mean())
+                insights['💎 Premium Design'] = {
+                    'hirdetések': premium_count,
+                    'arány': round(premium_count/total_count*100, 1),
+                    'átlag_pontszám': round(premium_avg_pont, 2),
+                    'leírás': 'Designer bútor, márvány, tömör fa, exkluzív anyagok'
+                }
+            
+            # 🌿 KIVÁLÓ LOKÁCIÓ & KÖRNYEZET
+            lokacio_pont_col = next((col for col in df.columns if ('lokacio' in col.lower() or 'location' in col.lower()) and 'pont' in col.lower()), None)
+            lokacio_van_col = next((col for col in df.columns if ('lokacio' in col.lower() or 'location' in col.lower()) and 'van_' in col.lower()), None)
+            if lokacio_pont_col and lokacio_van_col:
+                lokacio_count = int((df[lokacio_van_col] > 0).sum())
+                lokacio_avg_pont = float(df[lokacio_pont_col].mean())
+                insights['🌿 Premium Lokáció'] = {
+                    'hirdetések': lokacio_count,
+                    'arány': round(lokacio_count/total_count*100, 1),
+                    'átlag_pontszám': round(lokacio_avg_pont, 2),
+                    'leírás': 'Villa negyed, panoráma, csendes környezet'
+                }
+            
+            # ⚠️ NEGATÍV TÉNYEZŐK
+            negativ_pont_col = next((col for col in df.columns if 'negativ' in col.lower() and 'pont' in col.lower()), None)
+            negativ_van_col = next((col for col in df.columns if 'negativ' in col.lower() and 'van_' in col.lower()), None)
+            if negativ_pont_col and negativ_van_col:
+                negativ_count = int((df[negativ_van_col] > 0).sum())
+                negativ_avg_pont = float(df[negativ_pont_col].mean())
+                insights['⚠️ Negatív Tényezők'] = {
+                    'hirdetések': negativ_count,
+                    'arány': round(negativ_count/total_count*100, 1),
+                    'átlag_pontszám': round(abs(negativ_avg_pont), 2),  # Abszolút érték a megjelenítéshez
+                    'leírás': 'Felújítandó állapot, zajos környezet, problémás helyzet'
+                }
+            
+            return insights if insights else None
+            
+        except Exception as e:
+            print(f"Dinamikus szemantikai elemzés hiba: {e}")
+            return None
     
     async def run_complete_pipeline(self):
         """Teljes pipeline futtatása"""
@@ -525,8 +753,9 @@ class KomplettIngatlanPipeline:
         print(f"   🔍 Részletes CSV: {self.details_csv_file}")
         print(f"   🎨 Dashboard: {self.dashboard_file}")
         
-        print(f"\n🚀 KÖVETKEZŐ LÉPÉS:")
-        print(f"   streamlit run {self.dashboard_file}")
+        print(f"\n✅ DASHBOARD AUTOMATIKUSAN ELINDÍTVA!")
+        print(f"   🌐 Elérhető: http://localhost:8501+ (vagy következő elérhető port)")
+        print(f"   💡 A dashboard fut a háttérben")
         
         # Statisztikák
         try:
@@ -554,24 +783,27 @@ class UrlListScraper:
         self.page = None
     
     async def connect_to_chrome(self):
-        """Chrome kapcsolat létrehozása"""
+        """Chrome kapcsolat létrehozása - Headless módban (bevált konfiguráció)"""
         try:
-            print("🔗 Chrome kapcsolat létrehozása...")
+            print("🔗 Chrome indítása (headless mód)...")
             self.playwright = await async_playwright().start()
-            self.browser = await self.playwright.chromium.connect_over_cdp("http://localhost:9222")
             
-            # Aktív tab
-            contexts = self.browser.contexts
-            if contexts:
-                self.context = contexts[0]
-                pages = self.context.pages
-                if pages:
-                    self.page = pages[0]
-                else:
-                    self.page = await self.context.new_page()
-            else:
-                self.context = await self.browser.new_context()
-                self.page = await self.context.new_page()
+            # Headless browser indítása - eredeti bevált konfiguráció
+            self.browser = await self.playwright.chromium.launch(
+                headless=True,  # Headless mód - ez volt a bevált
+                args=[
+                    '--disable-dev-shm-usage',
+                    '--no-sandbox',
+                    '--disable-gpu'
+                ]
+            )
+            
+            # Új context és page létrehozása
+            self.context = await self.browser.new_context(
+                viewport={'width': 1920, 'height': 1080},
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            )
+            self.page = await self.context.new_page()
             
             print("✅ Chrome kapcsolat OK")
             return True
@@ -875,7 +1107,7 @@ class UrlListScraper:
         return None
     
     def save_to_csv(self, properties):
-        """CSV mentés automatikus fájlnévvel"""
+        """CSV mentés automatikus fájlnévvel pipe elválasztóval"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"ingatlan_lista_{self.location_name}_{timestamp}.csv"
@@ -887,9 +1119,10 @@ class UrlListScraper:
             available_columns = [col for col in columns if col in df.columns]
             df = df[available_columns]
             
-            df.to_csv(filename, index=False, encoding='utf-8-sig')
+            # CSV mentés PIPE elválasztóval (|) - vesszők a leírásban problémát okoznának
+            df.to_csv(filename, index=False, encoding='utf-8-sig', sep='|')
             
-            print(f"💾 Lista CSV mentve: {filename}")
+            print(f"💾 Lista CSV mentve (| elválasztó): {filename}")
             return filename
             
         except Exception as e:
@@ -912,12 +1145,26 @@ class DetailedScraper:
         self.playwright = None
         self.browser = None
         self.page = None
+        
+        # Bot elkerülő stratégiák
+        self.user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ]
+        self.current_user_agent_index = 0
+        self.referer_urls = [
+            'https://ingatlan.com/',
+            'https://ingatlan.com/lista/',
+            'https://www.google.com/',
+        ]
     
     async def process_all_properties(self):
         """Összes ingatlan részletes feldolgozása"""
-        # CSV beolvasás
+        # CSV beolvasás pipe elválasztóval
         try:
-            df = pd.read_csv(self.list_csv_file)
+            df = pd.read_csv(self.list_csv_file, sep='|')
             print(f"📊 CSV beolvasva: {len(df)} ingatlan")
         except Exception as e:
             print(f"❌ CSV hiba: {e}")
@@ -927,20 +1174,25 @@ class DetailedScraper:
             print("❌ Nincs 'link' oszlop!")
             return []
         
-        # Chrome kapcsolat
+        # NORMÁL PLAYWRIGHT CONNECTION - STABIL MÓDSZER
         try:
+            print("🔗 Chrome kapcsolat létrehozása (normál mód)...")
             self.playwright = await async_playwright().start()
-            self.browser = await self.playwright.chromium.connect_over_cdp("http://localhost:9222")
+            self.browser = await self.playwright.chromium.launch(
+                headless=False,  # Látható böngésző
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-dev-shm-usage',
+                    '--no-sandbox',
+                    '--disable-extensions'
+                ]
+            )
             
-            contexts = self.browser.contexts
-            if contexts:
-                self.context = contexts[0]
-                pages = self.context.pages
-                self.page = pages[0] if pages else await self.context.new_page()
-            else:
-                self.context = await self.browser.new_context()
-                self.page = await self.context.new_page()
-                
+            self.context = await self.browser.new_context(
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+            )
+            self.page = await self.context.new_page()
+            
             print("✅ Chrome kapcsolat részletes scraperhez OK")
             
         except Exception as e:
@@ -951,6 +1203,16 @@ class DetailedScraper:
         detailed_data = []
         urls = df['link'].dropna().tolist()
         
+        # SIMPLE SESSION WARMUP - PIPELINE STYLE
+        try:
+            print(f"\n🌐 Session warmup...")
+            await self.page.goto('https://ingatlan.com/', wait_until='domcontentloaded', timeout=60000)
+            await asyncio.sleep(5)  # Pipeline proven timing
+            
+            print(f"✅ Session előkészítve")
+        except Exception as e:
+            print(f"⚠️ Session warmup hiba (folytatunk): {e}")
+        
         for i, url in enumerate(urls, 1):
             try:
                 print(f"\n🏠 {i}/{len(urls)}: {url}")
@@ -958,18 +1220,29 @@ class DetailedScraper:
                 # Alapadatok az eredeti CSV-ből
                 original_data = df[df['link'] == url].iloc[0].to_dict()
                 
-                # Részletes adatok
+                # SIMPLE SCRAPING - PIPELINE STYLE
                 details = await self._scrape_single_property(url)
                 
                 # Kombináció
                 combined = {**original_data, **details}
                 detailed_data.append(combined)
                 
-                # Humanizált várakozás
+                # Humán-szerű várakozás változatos időkkel
                 if i < len(urls):
-                    wait_time = random.uniform(2.0, 4.0)
-                    print(f"  ⏰ Várakozás {wait_time:.1f}s...")
-                    await asyncio.sleep(wait_time)
+                    # Exponenciálisan növekvő várakozási idő bot detekció elkerülésére
+                    base_wait = random.uniform(2.5, 4.5)
+                    if i > 5:  # 5. kérés után még lassabb
+                        base_wait = random.uniform(4.0, 6.5)
+                    if i > 10:  # 10. kérés után még lassabb
+                        base_wait = random.uniform(5.5, 8.0)
+                        
+                    # Minden 5. kérésnél extra hosszú szünet
+                    if i % 5 == 0:
+                        base_wait += random.uniform(2.0, 4.0)
+                        print(f"  🔄 Extra szünet {i}. kérésnél...")
+                    
+                    print(f"  ⏰ Várakozás {base_wait:.1f}s...")
+                    await asyncio.sleep(base_wait)
                     
             except Exception as e:
                 print(f"  ❌ Hiba: {e}")
@@ -982,15 +1255,15 @@ class DetailedScraper:
         return detailed_data
     
     async def _scrape_single_property(self, url):
-        """Egyetlen ingatlan részletes scraping - enhanced logikával"""
+        """Egyetlen ingatlan részletes scraping - PIPELINE STYLE"""
         details = {}
         
         try:
             print(f"  🏠 Adatlap: {url}")
             
-            # Navigálás
+            # SIMPLE NAVIGATION - PIPELINE PROVEN
             await self.page.goto(url, wait_until='domcontentloaded', timeout=30000)
-            await asyncio.sleep(random.uniform(2.0, 3.0))
+            await asyncio.sleep(random.uniform(2.0, 3.0))  # Pipeline timing
             
             # Részletes cím
             try:
@@ -1004,6 +1277,12 @@ class DetailedScraper:
                             break
                 else:
                     details['reszletes_cim'] = ""
+                    
+                # SIMPLE CAPTCHA DETECTION
+                if details.get('reszletes_cim', '').lower().find('gyors ellenőrzés') != -1:
+                    print(f"    🚨 CAPTCHA DETECTED: {details['reszletes_cim']}")
+                    details['reszletes_cim'] = "CAPTCHA_DETECTED"
+                    
             except:
                 details['reszletes_cim'] = ""
             
@@ -1101,7 +1380,7 @@ class DetailedScraper:
             except:
                 details['leiras'] = ""
             
-            # HIRDETŐ TÍPUS MEGHATÁROZÁSA - ELSŐDLEGES FORRÁS: oldalon lévő jelölés
+            # HIRDETŐ TÍPUS MEGHATÁROZÁSA - egyszerűsített
             details['hirdeto_tipus'] = await self._determine_advertiser_type_from_page()
             
             # Ha nem sikerült az oldalról, akkor szemantikai elemzés
@@ -1132,11 +1411,9 @@ class DetailedScraper:
             return self._get_empty_details()
     
     async def _determine_advertiser_type_from_page(self):
-        """Egyszerűsített hirdető típus azonosítás - csak a pontos HTML elem alapján"""
+        """Hirdető típus azonosítás a self.page-ről"""
         try:
             # Keressük a pontos szelektort
-            # <span class="d-flex align-items-center text-start h-100 my-auto fw-bold fs-6">Magánszemély</span>
-            
             selectors = [
                 # Pontos selector a megadott struktúra alapján
                 'span.d-flex.align-items-center.text-start.h-100.my-auto.fw-bold.fs-6',
@@ -1175,6 +1452,7 @@ class DetailedScraper:
             return "ismeretlen"
             
         except Exception as e:
+            return "ismeretlen"
             print(f"    ⚠️ HTML hirdető típus hiba: {e}")
             return "ismeretlen"
 
@@ -1275,6 +1553,320 @@ class DetailedScraper:
         
         return "bizonytalan"
     
+    def _categorize_district(self, cim, reszletes_cim, leiras, location_name=""):
+        """Dinamikus városrész kategorizálás lokáció alapján"""
+        
+        # Egyesített szöveg elemzéshez
+        teljes_szoveg = f"{cim} {reszletes_cim} {leiras}".lower()
+        
+        # LOKÁCIÓ ALAPÚ VÁROSRÉSZ MEGHATÁROZÁS
+        if 'budaors' in location_name.lower():
+            return self._categorize_budaors_district(cim, reszletes_cim, leiras)
+        elif 'xii_ker' in location_name.lower() or 'xii-ker' in location_name.lower():
+            return self._categorize_budapest_xii_district(cim, reszletes_cim, leiras)
+        elif 'budapest' in location_name.lower():
+            return self._categorize_budapest_general_district(cim, reszletes_cim, leiras)
+        elif 'erd' in location_name.lower():
+            return self._categorize_erd_district(cim, reszletes_cim, leiras)
+        else:
+            # ÁLTALÁNOS KATEGORIZÁLÁS - LOKÁCIÓ FÜGGETLEN
+            return self._categorize_general_district(cim, reszletes_cim, leiras)
+
+    def _categorize_budapest_xii_district(self, cim, reszletes_cim, leiras):
+        """Budapest XII. kerület városrész kategorizálás"""
+        
+        # Egyesített szöveg elemzéshez
+        teljes_szoveg = f"{cim} {reszletes_cim} {leiras}".lower()
+        
+        # BUDAPEST XII. KERÜLET VÁROSRÉSZEK ÉS PRÉMIUM KATEGÓRIÁK
+        varosreszek = {
+            # PRÉMIUM TERÜLETEK - 1.4x szorzó
+            'XII. ker. Budai hegyek - Villa negyed': {
+                'kulcsszavak': ['svábhegy', 'rózsadomb', 'széchenyi-hegy', 'villa', 'panoráma',
+                               'budai hegyek', 'erdő', 'természet', 'csendes', 'prestige'],
+                'premium_szorzo': 1.4,
+                'leiras': 'Budai hegyek, villanegyed, panorámás kilátás'
+            },
+            
+            'XII. ker. Hegyvidék prémium': {
+                'kulcsszavak': ['hegyvidék', 'normafa', 'jános-hegy', 'zugliget',
+                               'családi ház', 'nagy telek', 'zöld környezet'],
+                'premium_szorzo': 1.35,
+                'leiras': 'Hegyvidéki prémium lokáció'
+            },
+            
+            # KIVÁLÓ LOKÁCIÓK - 1.25x szorzó  
+            'XII. ker. Orbánhegy': {
+                'kulcsszavak': ['orbánhegy', 'orbán', 'erdőalja', 'family park',
+                               'bevásárlóközpont', 'infrastruktúra', 'modern'],
+                'premium_szorzo': 1.25,
+                'leiras': 'Orbánhegy, jó infrastruktúra, bevásárlóközpontok'
+            },
+            
+            'XII. ker. Krisztinaváros': {
+                'kulcsszavak': ['krisztina', 'várfok', 'attila', 'logodi',
+                               'várnegyed', 'központhoz közel', 'történelmi'],
+                'premium_szorzo': 1.25,
+                'leiras': 'Krisztinaváros, várnegyedhez közel'
+            },
+            
+            # JÓ LAKÓNEGYEDEK - 1.15x szorzó
+            'XII. ker. Németvölgy': {
+                'kulcsszavak': ['németvölgy', 'német völgy', 'csendes utca',
+                               'lakónegyed', 'családbarát', 'iskola'],
+                'premium_szorzo': 1.15,
+                'leiras': 'Németvölgyi lakónegyed'
+            },
+            
+            'XII. ker. Farkasrét': {
+                'kulcsszavak': ['farkasrét', 'farkas rét', 'új lakópark',
+                               'modern építés', 'fejlesztés', 'tömegközlekedés'],
+                'premium_szorzo': 1.15,
+                'leiras': 'Farkasréti új fejlesztések'
+            },
+            
+            # STANDARD TERÜLETEK - 1.0x szorzó
+            'XII. ker. Belváros': {
+                'kulcsszavak': ['belváros', 'központ', 'közlekedés', 'móricz zsigmond',
+                               'szolgáltatás', 'bolt', 'étterem', 'kultúra'],
+                'premium_szorzo': 1.0,
+                'leiras': 'XII. kerületi központi rész'
+            },
+            
+            # FORGALMAS TERÜLETEK - 0.9x szorzó
+            'XII. ker. Főutak mellett': {
+                'kulcsszavak': ['budai alsó rakpart', 'hegyalja út', 'alkotás',
+                               'forgalmas', 'zajos', 'nagy forgalom'],
+                'premium_szorzo': 0.9,
+                'leiras': 'Főutak melletti forgalmas terület'
+            }
+        }
+        
+        return self._find_best_district_match(varosreszek, teljes_szoveg, 'XII. ker. Általános')
+
+    def _categorize_general_district(self, cim, reszletes_cim, leiras):
+        """Általános városrész kategorizálás minden lokációhoz"""
+        
+        # Egyesített szöveg elemzéshez
+        teljes_szoveg = f"{cim} {reszletes_cim} {leiras}".lower()
+        
+        # ÁLTALÁNOS KATEGÓRIÁK - LOKÁCIÓ FÜGGETLEN
+        varosreszek = {
+            # PRÉMIUM TERÜLETEK
+            'Prémium villa negyed': {
+                'kulcsszavak': ['villa', 'panoráma', 'erdő', 'természet', 'csendes',
+                               'prestige', 'exkluzív', 'nagy telek', 'luxus'],
+                'premium_szorzo': 1.3,
+                'leiras': 'Prémium villa negyed'
+            },
+            
+            # JÓ LOKÁCIÓK
+            'Jó lakónegyed': {
+                'kulcsszavak': ['lakópark', 'modern', 'új építés', 'családbarát',
+                               'infrastruktúra', 'iskola', 'óvoda', 'szolgáltatás'],
+                'premium_szorzo': 1.15,
+                'leiras': 'Jó lakónegyed, megfelelő infrastruktúrával'
+            },
+            
+            # STANDARD
+            'Központi terület': {
+                'kulcsszavak': ['központ', 'belváros', 'közlekedés', 'bolt',
+                               'szolgáltatás', 'munkahely', 'kultúra'],
+                'premium_szorzo': 1.0,
+                'leiras': 'Központi elhelyezkedés'
+            },
+            
+            # PROBLÉMÁS TERÜLETEK
+            'Forgalmas terület': {
+                'kulcsszavak': ['főút', 'forgalmas', 'zajos', 'autópálya',
+                               'nagy forgalom', 'zajterhelés', 'levegőszennyezés'],
+                'premium_szorzo': 0.9,
+                'leiras': 'Forgalmas, zajos környezet'
+            }
+        }
+        
+        return self._find_best_district_match(varosreszek, teljes_szoveg, 'Általános terület')
+
+    def _categorize_budapest_general_district(self, cim, reszletes_cim, leiras):
+        """Általános budapesti városrész kategorizálás"""
+        
+        # Egyesített szöveg elemzéshez
+        teljes_szoveg = f"{cim} {reszletes_cim} {leiras}".lower()
+        
+        # BUDAPEST ÁLTALÁNOS KATEGÓRIÁK
+        varosreszek = {
+            'Budapest prémium kerület': {
+                'kulcsszavak': ['i.', 'ii.', 'v.', 'vi.', 'várnegyed', 'budai hegyek',
+                               'rózsadomb', 'villa', 'panoráma', 'prémium'],
+                'premium_szorzo': 1.3,
+                'leiras': 'Prémium budapesti kerület'
+            },
+            
+            'Budapest jó lokáció': {
+                'kulcsszavak': ['iii.', 'ix.', 'xi.', 'xiii.', 'lakópark',
+                               'tömegközlekedés', 'modern', 'fejlesztés'],
+                'premium_szorzo': 1.1,
+                'leiras': 'Jó budapesti lokáció'
+            },
+            
+            'Budapest külső kerület': {
+                'kulcsszavak': ['xiv.', 'xv.', 'xvi.', 'xvii.', 'xviii.', 'xix.', 'xx.',
+                               'xxi.', 'xxii.', 'xxiii.', 'külső', 'agglomeráció'],
+                'premium_szorzo': 0.95,
+                'leiras': 'Külső budapesti kerület'
+            }
+        }
+        
+        return self._find_best_district_match(varosreszek, teljes_szoveg, 'Budapest általános')
+
+    def _categorize_erd_district(self, cim, reszletes_cim, leiras):
+        """Érd városrész kategorizálás"""
+        
+        # Egyesített szöveg elemzéshez
+        teljes_szoveg = f"{cim} {reszletes_cim} {leiras}".lower()
+        
+        # ÉRD VÁROSRÉSZEK
+        varosreszek = {
+            'Érd Erdliget - Prémium': {
+                'kulcsszavak': ['erdliget', 'erdő', 'természet', 'csendes',
+                               'villa', 'családi ház', 'nagy telek'],
+                'premium_szorzo': 1.2,
+                'leiras': 'Erdligeti prémium terület'
+            },
+            
+            'Érd Központ': {
+                'kulcsszavak': ['központ', 'belváros', 'szolgáltatás', 'közlekedés',
+                               'bevásárlóközpont', 'iskola', 'óvoda'],
+                'premium_szorzo': 1.0,
+                'leiras': 'Érdi központi terület'
+            },
+            
+            'Érd Lakótelep': {
+                'kulcsszavak': ['lakótelep', 'panel', 'tégla', 'társasház',
+                               'tömeges beépítés', 'sűrű beépítés'],
+                'premium_szorzo': 0.9,
+                'leiras': 'Érdi lakótelepi rész'
+            }
+        }
+        
+        return self._find_best_district_match(varosreszek, teljes_szoveg, 'Érd általános')
+
+    def _find_best_district_match(self, varosreszek, teljes_szoveg, default_category):
+        """Legjobb városrész egyezés keresése"""
+        
+        best_match = {
+            'kategoria': default_category,
+            'premium_szorzo': 1.0,
+            'leiras': 'Általános terület'
+        }
+        
+        max_score = 0
+        
+        for varosresz_nev, info in varosreszek.items():
+            score = 0
+            for kulcsszo in info['kulcsszavak']:
+                if kulcsszo in teljes_szoveg:
+                    score += teljes_szoveg.count(kulcsszo)
+            
+            if score > max_score:
+                max_score = score
+                best_match = {
+                    'kategoria': varosresz_nev,
+                    'premium_szorzo': info['premium_szorzo'],
+                    'leiras': info['leiras']
+                }
+        
+        return best_match
+
+    def _categorize_budaors_district(self, cim, reszletes_cim, leiras):
+        """Budaörs városrész kategorizálás és prémium szorzó meghatározás"""
+        
+        # Egyesített szöveg elemzéshez
+        teljes_szoveg = f"{cim} {reszletes_cim} {leiras}".lower()
+        
+        # BUDAÖRS VÁROSRÉSZEK ÉS PRÉMIUM KATEGÓRIÁK
+        varosreszek = {
+            # PRÉMIUM VILLA NEGYEDEK - 1.3x szorzó
+            'Budaörs Központ - Villa Negyed': {
+                'kulcsszavak': ['villa park', 'villa negyed', 'károlyi', 'fő utca', 'templom', 
+                               'központ', 'budaörsi főút', 'ady endre', 'petőfi sándor'],
+                'premium_szorzo': 1.3,
+                'leiras': 'Központi villa negyed, magas presztizsű környezet'
+            },
+            
+            # KIVÁLÓ LOKÁCIÓK - 1.25x szorzó  
+            'Budaörs Kamaraerdő': {
+                'kulcsszavak': ['kamaraerdő', 'erdő szél', 'természet közel', 'erdős környezet',
+                               'csendes', 'zöldövezet', 'panorámás'],
+                'premium_szorzo': 1.25,
+                'leiras': 'Erdőszéli, természetközeli, csendes környék'
+            },
+            
+            'Budaörs Törökbálint határ': {
+                'kulcsszavak': ['törökbálint', 'törökbálinti', 'határ', 'nagy telek',
+                               'tágas', 'családi ház', 'sarok telek'],
+                'premium_szorzo': 1.2,
+                'leiras': 'Törökbálint határán, nagy telkekkel'
+            },
+            
+            # JÓ LAKÓNEGYEDEK - 1.15x szorzó
+            'Budaörs Új Lakónegyed': {
+                'kulcsszavak': ['új építésű', 'lakópark', 'modern', 'újépítésű',
+                               'családbarát', 'infrastruktúra', 'szolgáltatások'],
+                'premium_szorzo': 1.15,
+                'leiras': 'Modern lakónegyed, jó infrastruktúrával'
+            },
+            
+            # STANDARD TERÜLETEK - 1.0x szorzó
+            'Budaörs Belváros': {
+                'kulcsszavak': ['belváros', 'központhoz közel', 'közlekedés',
+                               'bolt', 'iskola', 'óvoda', 'szolgáltatás'],
+                'premium_szorzo': 1.0,
+                'leiras': 'Belvárosi, jó közlekedéssel és szolgáltatásokkal'
+            },
+            
+            # FORGALMAS/ZAJOS TERÜLETEK - 0.9x szorzó
+            'Budaörs Főút mellett': {
+                'kulcsszavak': ['főút', 'forgalmas', 'zajos', 'közlekedés',
+                               'autópálya', 'nagy forgalom', 'zajterhelés'],
+                'premium_szorzo': 0.9,
+                'leiras': 'Főút melletti, forgalmas terület'
+            },
+            
+            # IPARI KÖRNYEZET - 0.85x szorzó
+            'Budaörs Ipari Környék': {
+                'kulcsszavak': ['ipari', 'telephely', 'raktár', 'kereskedelmi',
+                               'üzemi', 'logisztikai', 'műhely'],
+                'premium_szorzo': 0.85,
+                'leiras': 'Ipari környezetben'
+            }
+        }
+        
+        # Városrész azonosítás - pontszám alapú
+        best_match = {
+            'kategoria': 'Budaörs Általános',
+            'premium_szorzo': 1.0,
+            'leiras': 'Általános budaörsi terület'
+        }
+        
+        max_score = 0
+        
+        for varosresz_nev, info in varosreszek.items():
+            score = 0
+            for kulcsszo in info['kulcsszavak']:
+                if kulcsszo in teljes_szoveg:
+                    score += teljes_szoveg.count(kulcsszo)
+            
+            if score > max_score:
+                max_score = score
+                best_match = {
+                    'kategoria': varosresz_nev,
+                    'premium_szorzo': info['premium_szorzo'],
+                    'leiras': info['leiras']
+                }
+        
+        return best_match
+    
     def _get_empty_details(self):
         """Üres adatstruktúra"""
         return {
@@ -1292,7 +1884,6 @@ class DetailedScraper:
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             base_filename = f"ingatlan_reszletes_{self.location_name}_{timestamp}.csv"
-            enhanced_filename = f"ingatlan_reszletes_enhanced_text_features.csv"
             
             df = pd.DataFrame(detailed_data)
             
@@ -1308,9 +1899,9 @@ class DetailedScraper:
             final_columns = available_priority + other_cols
             df = df[final_columns]
             
-            # Alap CSV mentése (backup)
-            df.to_csv(base_filename, index=False, encoding='utf-8-sig')
-            print(f"💾 Alap CSV mentve: {base_filename}")
+            # Alap CSV mentése (backup) PIPE elválasztóval
+            df.to_csv(base_filename, index=False, encoding='utf-8-sig', sep='|')
+            print(f"💾 Alap CSV mentve (| elválasztó): {base_filename}")
             
             # 🌟 ENHANCED TEXT FEATURES GENERÁLÁS
             print(f"� Enhanced text feature-k generálása...")
@@ -1318,29 +1909,36 @@ class DetailedScraper:
             # Szövegelemző inicializálása
             analyzer = IngatlanSzovegelemzo()
             
-            # Új oszlopok inicializálása
+            # Új oszlopok inicializálása - MODERN ÁRFELHAJTÓ KATEGÓRIÁK (2025)
             text_feature_columns = {
-                'luxus_minoseg_pont': 0.0,
-                'kert_kulso_pont': 0.0,
-                'parkolas_garage_pont': 0.0,
-                'terulet_meret_pont': 0.0,
-                'komfort_extra_pont': 0.0,
-                'allapot_felujitas_pont': 0.0,
-                'lokacio_kornyezet_pont': 0.0,
-                'futes_energia_pont': 0.0,
+                # Pontszám oszlopok - ÚJ MODERN KATEGÓRIÁK
+                'zold_energia_premium_pont': 0.0,
+                'wellness_luxury_pont': 0.0,
+                'smart_technology_pont': 0.0,
+                'premium_design_pont': 0.0,
+                'premium_parking_pont': 0.0,
+                'premium_location_pont': 0.0,
+                'build_quality_pont': 0.0,
                 'negativ_tenyezok_pont': 0.0,
                 
-                # Dummy változók (0/1)
-                'van_luxus_kifejezés': 0,
-                'van_kert_terulet': 0,
-                'van_garage_parkolas': 0,
-                'van_komfort_extra': 0,
+                # Binary dummy változók (0/1) - modern kategóriákhoz
+                'van_zold_energia': 0,
+                'van_wellness_luxury': 0,
+                'van_smart_tech': 0,
+                'van_premium_design': 0,
+                'van_premium_parking': 0,
+                'van_premium_location': 0,
+                'van_build_quality': 0,
                 'van_negativ_elem': 0,
                 
                 # Összesített pontszámok
                 'ossz_pozitiv_pont': 0.0,
                 'ossz_negativ_pont': 0.0,
-                'netto_szoveg_pont': 0.0
+                'netto_szoveg_pont': 0.0,
+                
+                # VÁROSRÉSZ KATEGORIZÁLÁS - BUDAÖRS SPECIFIKUS
+                'varosresz_kategoria': 'Ismeretlen',
+                'varosresz_premium_szorzo': 1.0
             }
             
             # Oszlopok hozzáadása
@@ -1351,59 +1949,73 @@ class DetailedScraper:
             processed_count = 0
             for idx, row in df.iterrows():
                 if pd.notna(row.get('leiras', '')):
-                    # Kategória pontszámok kinyerése
+                    # Kategória pontszámok kinyerése az ÚJ kategóriák alapján
                     scores, details = analyzer.extract_category_scores(row['leiras'])
                     
-                    # Pontszámok mentése
-                    df.at[idx, 'luxus_minoseg_pont'] = scores.get('LUXUS_MINOSEG', 0)
-                    df.at[idx, 'kert_kulso_pont'] = scores.get('KERT_KULSO', 0)
-                    df.at[idx, 'parkolas_garage_pont'] = scores.get('PARKOLAS_GARAGE', 0)
-                    df.at[idx, 'terulet_meret_pont'] = scores.get('TERULET_MERET', 0)
-                    df.at[idx, 'komfort_extra_pont'] = scores.get('KOMFORT_EXTRA', 0)
-                    df.at[idx, 'allapot_felujitas_pont'] = scores.get('ALLAPOT_FELUJITAS', 0)
-                    df.at[idx, 'lokacio_kornyezet_pont'] = scores.get('LOKACIO_KORNYEZET', 0)
-                    df.at[idx, 'futes_energia_pont'] = scores.get('FUTES_ENERGIA', 0)
+                    # MODERN KATEGÓRIÁK pontszámainak mentése
+                    df.at[idx, 'zold_energia_premium_pont'] = scores.get('ZOLD_ENERGIA_PREMIUM', 0)
+                    df.at[idx, 'wellness_luxury_pont'] = scores.get('WELLNESS_LUXURY', 0)
+                    df.at[idx, 'smart_technology_pont'] = scores.get('SMART_TECHNOLOGY', 0)
+                    df.at[idx, 'premium_design_pont'] = scores.get('PREMIUM_DESIGN', 0)
+                    df.at[idx, 'premium_parking_pont'] = scores.get('PREMIUM_PARKING', 0)
+                    df.at[idx, 'premium_location_pont'] = scores.get('PREMIUM_LOCATION', 0)
+                    df.at[idx, 'build_quality_pont'] = scores.get('BUILD_QUALITY', 0)
                     df.at[idx, 'negativ_tenyezok_pont'] = scores.get('NEGATIV_TENYEZOK', 0)
                     
-                    # Dummy változók
-                    df.at[idx, 'van_luxus_kifejezés'] = 1 if scores.get('LUXUS_MINOSEG', 0) > 0 else 0
-                    df.at[idx, 'van_kert_terulet'] = 1 if scores.get('KERT_KULSO', 0) > 0 else 0
-                    df.at[idx, 'van_garage_parkolas'] = 1 if scores.get('PARKOLAS_GARAGE', 0) > 0 else 0
-                    df.at[idx, 'van_komfort_extra'] = 1 if scores.get('KOMFORT_EXTRA', 0) > 0 else 0
+                    # Binary dummy változók - modern kategóriákhoz
+                    df.at[idx, 'van_zold_energia'] = 1 if scores.get('ZOLD_ENERGIA_PREMIUM', 0) > 0 else 0
+                    df.at[idx, 'van_wellness_luxury'] = 1 if scores.get('WELLNESS_LUXURY', 0) > 0 else 0
+                    df.at[idx, 'van_smart_tech'] = 1 if scores.get('SMART_TECHNOLOGY', 0) > 0 else 0
+                    df.at[idx, 'van_premium_design'] = 1 if scores.get('PREMIUM_DESIGN', 0) > 0 else 0
+                    df.at[idx, 'van_premium_parking'] = 1 if scores.get('PREMIUM_PARKING', 0) > 0 else 0
+                    df.at[idx, 'van_premium_location'] = 1 if scores.get('PREMIUM_LOCATION', 0) > 0 else 0
+                    df.at[idx, 'van_build_quality'] = 1 if scores.get('BUILD_QUALITY', 0) > 0 else 0
                     df.at[idx, 'van_negativ_elem'] = 1 if scores.get('NEGATIV_TENYEZOK', 0) < 0 else 0
                     
-                    # Összesített pontszámok
-                    pozitiv_kategoriak = ['LUXUS_MINOSEG', 'KERT_KULSO', 'PARKOLAS_GARAGE', 
-                                         'TERULET_MERET', 'KOMFORT_EXTRA', 'ALLAPOT_FELUJITAS',
-                                         'LOKACIO_KORNYEZET', 'FUTES_ENERGIA']
+                    # VÁROSRÉSZ KATEGORIZÁLÁS - DINAMIKUS LOKÁCIÓ ALAPJÁN
+                    varosresz_info = self._categorize_district(str(row.get('cim', '')), str(row.get('reszletes_cim', '')), str(row.get('leiras', '')), self.location_name)
+                    df.at[idx, 'varosresz_kategoria'] = varosresz_info['kategoria']
+                    df.at[idx, 'varosresz_premium_szorzo'] = varosresz_info['premium_szorzo']
                     
-                    ossz_pozitiv = sum(max(0, scores.get(k, 0)) for k in pozitiv_kategoriak)
+                    # Összesített pontszámok - MODERN KATEGÓRIÁK városrész szorzóval
+                    pozitiv_kategoriak = ['ZOLD_ENERGIA_PREMIUM', 'WELLNESS_LUXURY', 'SMART_TECHNOLOGY', 
+                                         'PREMIUM_DESIGN', 'PREMIUM_PARKING', 'PREMIUM_LOCATION', 'BUILD_QUALITY']
+                    
+                    ossz_pozitiv = sum(max(0, scores.get(kat, 0)) for kat in pozitiv_kategoriak)
                     ossz_negativ = abs(min(0, scores.get('NEGATIV_TENYEZOK', 0)))
+                    netto_pont = ossz_pozitiv - ossz_negativ
                     
-                    df.at[idx, 'ossz_pozitiv_pont'] = ossz_pozitiv
-                    df.at[idx, 'ossz_negativ_pont'] = ossz_negativ
-                    df.at[idx, 'netto_szoveg_pont'] = ossz_pozitiv - ossz_negativ
+                    # Városrész prémium szorzó alkalmazása
+                    netto_pont_adjusted = netto_pont * varosresz_info['premium_szorzo']
+                    
+                    df.at[idx, 'ossz_pozitiv_pont'] = round(ossz_pozitiv, 2)
+                    df.at[idx, 'ossz_negativ_pont'] = round(ossz_negativ, 2)
+                    df.at[idx, 'netto_szoveg_pont'] = round(netto_pont_adjusted, 2)
+                    df.at[idx, 'netto_szoveg_pont'] = round(ossz_pozitiv - ossz_negativ, 2)
                     
                     processed_count += 1
             
             print(f"✅ Text feature-k generálva: {processed_count} ingatlanhoz")
             
-            # Text feature statisztikák
-            print(f"📊 ENHANCED FEATURE STATISZTIKÁK:")
-            print(f"💎 Luxus: {df['van_luxus_kifejezés'].sum()} ingatlan")
-            print(f"🌳 Kert: {df['van_kert_terulet'].sum()} ingatlan") 
-            print(f"🚗 Garázs: {df['van_garage_parkolas'].sum()} ingatlan")
-            print(f"🏡 Komfort: {df['van_komfort_extra'].sum()} ingatlan")
-            print(f"⚠️ Negatív: {df['van_negativ_elem'].sum()} ingatlan")
+            # MODERN FEATURE STATISZTIKÁK
+            print(f"📊 ENHANCED FEATURE STATISZTIKÁK (2025 TRENDEK):")
+            print(f"🌞 Zöld Energia: {df['van_zold_energia'].sum()} ingatlan")
+            print(f"🏊 Wellness & Luxury: {df['van_wellness_luxury'].sum()} ingatlan")
+            print(f"🏠 Smart Technology: {df['van_smart_tech'].sum()} ingatlan")
+            print(f"💎 Premium Design: {df['van_premium_design'].sum()} ingatlan")
+            print(f"🚗 Premium Parking: {df['van_premium_parking'].sum()} ingatlan")
+            print(f"🌿 Premium Location: {df['van_premium_location'].sum()} ingatlan")
+            print(f"�️ Build Quality: {df['van_build_quality'].sum()} ingatlan")
+            print(f"⚠️ Negatív tényezők: {df['van_negativ_elem'].sum()} ingatlan")
             
-            # Enhanced CSV mentése
-            df.to_csv(enhanced_filename, index=False, encoding='utf-8-sig')
+            # Enhanced CSV mentése PIPE elválasztóval
+            df.to_csv(base_filename, index=False, encoding='utf-8-sig', sep='|')
             
-            print(f"🌟 Enhanced CSV mentve: {enhanced_filename}")
+            print(f"🌟 Enhanced CSV mentve (| elválasztó): {base_filename}")
             print(f"📊 Oszlopok: {len(df.columns)} (+ {len(text_feature_columns)} text feature)")
             print(f"✨ Használatra kész az Enhanced ML modellhez!")
             
-            return enhanced_filename  # Az enhanced fájlt adjuk vissza
+            return base_filename  # Az enhanced fájlt adjuk vissza
             
         except Exception as e:
             print(f"❌ CSV mentési hiba: {e}")
