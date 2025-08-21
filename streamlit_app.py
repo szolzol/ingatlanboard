@@ -1,3 +1,25 @@
+"""
+STREAMLIT DASHBOARD TEMPLATE - INGATLAN ELEMZÉS
+===============================================
+
+🎯 HASZNÁLAT:
+1. Másold le ezt a template fájlt új névvel (pl. dashboard_location.py)
+2. Cseréld le a TEMPLATE placeholder-eket:
+   - {{LOCATION_NAME}} -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
+   - {{CSV_PATTERN_1}}, {{CSV_PATTERN_2}}, {{CSV_PATTERN_3}} -> konkrét CSV pattern-ek
+
+📋 PÉLDA CSERÉK:
+- Törökbálint-Tükörhegy esetén:
+  {{LOCATION_NAME}} -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
+  {{CSV_PATTERN_1}} -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+  
+- XII. kerület esetén:
+  {{LOCATION_NAME}} -> "XII. KERÜLET" 
+  {{CSV_PATTERN_1}} -> "ingatlan_reszletes_*xii_ker*.csv"
+
+⚡ Fix lokáció + dinamikus időbélyeg = deployment stable + auto-update!
+"""
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -10,77 +32,11 @@ import glob
 import warnings
 warnings.filterwarnings('ignore')
 
-# Dinamikus location_name kinyerése a fájlnévből - ÚJÍTVA: egyszerűsített formátum
+# TEMPLATE PLACEHOLDER - Location név és CSV pattern
+# Ezt a részt kell módosítani egyedi dashboard generálásnál
 def get_location_from_filename():
-    # Új egyszerűsített formátum: ingatlan_reszletes_uepitve_kozott_epitve_utan_ii_ker_20250821_165032.csv
-    detailed_files = glob.glob("ingatlan_reszletes_*.csv")
-    if detailed_files:
-        latest_file = max(detailed_files, key=lambda f: os.path.getmtime(f))
-        print(f"📂 Legújabb CSV: {latest_file}")
-        filename_parts = latest_file.replace('.csv', '').split('_')
-        print(f"🔍 Fájlnév részek: {filename_parts}")
-        
-        # Az utolsó előtti 2 rész az időbélyeg (pl: 20250821, 165032)
-        # Keressük meg a földrajzi részt
-        location_parts = []
-        
-        # Végigmegyünk a részeken és keressük a földrajzi információt
-        for i, part in enumerate(filename_parts):
-            # Ha Budapest kerület formátum (i, ii, iii, xii, stb.)
-            if part in ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx', 'xxi', 'xxii', 'xxiii']:
-                # Előző rész "budapest" lehet
-                if i > 0 and filename_parts[i-1] == 'budapest':
-                    location_parts = ['budapest', part]
-                else:
-                    location_parts = [part]  # Implicit Budapest
-                
-                # Következő rész "ker" lehet
-                if i + 1 < len(filename_parts) and filename_parts[i + 1] == 'ker':
-                    location_parts.append('ker')
-                break
-            
-            # Ha külváros (budaors, erd, stb.)
-            elif part in ['budaors', 'erd', 'erdliget']:
-                location_parts = [part]
-                break
-        
-        if location_parts:
-            # Formázás
-            if 'ker' in location_parts:
-                # Budapest kerület formátum
-                if len(location_parts) >= 2:
-                    kerulet_szam = location_parts[-2] if location_parts[-1] == 'ker' else location_parts[0]
-                    return f"{kerulet_szam.upper()}. KERÜLET"
-            else:
-                # Külváros formátum
-                return location_parts[0].capitalize()
-    
-    # Fallback: régi enhanced fájlok
-    enhanced_files = glob.glob("ingatlan_reszletes_enhanced_text_features_*.csv")
-    if enhanced_files:
-        latest_file = max(enhanced_files, key=lambda f: os.path.getmtime(f))
-        filename_parts = latest_file.replace('.csv', '').split('_')
-        if len(filename_parts) >= 13:
-            location_parts = []
-            for i in range(10, len(filename_parts)-2):
-                part = filename_parts[i]
-                if part.isdigit() and len(part) == 8:
-                    break
-                location_parts.append(part)
-            
-            if location_parts:
-                location_str = ' '.join(location_parts).replace('ker', 'kerület')
-                return location_str.upper()
-    
-    # Fallback: régi modern fájlok
-    modern_files = glob.glob("ingatlan_modern_enhanced_*.csv")
-    if modern_files:
-        latest_file = max(modern_files, key=lambda f: os.path.getmtime(f))
-        filename_parts = latest_file.replace('.csv', '').split('_')
-        if len(filename_parts) >= 4:
-            return filename_parts[3].capitalize()
-    
-    return "Keresési lista"  # default
+    """Fix location név visszaadása - ezt módosítani kell egyedi dashboard-oknál"""
+    return "{{LOCATION_NAME}}"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
 
 location_name = get_location_from_filename()
 timestamp = datetime.now().strftime("%Y.%m.%d %H:%M")
@@ -94,35 +50,48 @@ st.set_page_config(
 )
 
 def load_and_process_data():
-    """Adatok betöltése és feldolgozása - ÚJÍTVA: egyszerűsített formátum"""
+    """Adatok betöltése és feldolgozása - TEMPLATE: fix lokáció, dinamikus időbélyeg"""
     try:
-        # ÚJ Egyszerűsített CSV betöltése (prioritás)
-        import glob
-        detailed_files = glob.glob("ingatlan_reszletes_*.csv")
-        if detailed_files:
-            latest_file = max(detailed_files)
-            print(f"📊 Részletes CSV betöltése: {latest_file}")
-            df = pd.read_csv(latest_file, encoding='utf-8-sig', sep='|')
-        else:
-            # Fallback: régi modern enhanced CSV
-            modern_files = glob.glob("ingatlan_modern_enhanced_*.csv")
-            if modern_files:
-                latest_file = max(modern_files)
-                print(f"📊 Modern CSV betöltése: {latest_file}")
+        # TEMPLATE PLACEHOLDER - CSV lokáció pattern
+        # Ezt a részt kell módosítani egyedi dashboard generálásnál
+        location_patterns = [
+            "{{CSV_PATTERN_1}}",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+            "{{CSV_PATTERN_2}}",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
+            "{{CSV_PATTERN_3}}"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
+        ]
+        
+        # Fix lokáció pattern keresés - mindig a legfrissebb CSV-t választja
+        for pattern in location_patterns:
+            if pattern.startswith("{{") and pattern.endswith("}}"):
+                continue  # Skip template placeholders
+                
+            matching_files = glob.glob(pattern)
+            if matching_files:
+                # Legfrissebb fájl kiválasztása időbélyeg alapján (fájl módosítás ideje szerint)
+                latest_file = max(matching_files, key=lambda f: os.path.getmtime(f))
+                print(f"📊 Legfrissebb CSV betöltése ({pattern}): {latest_file}")
+                
                 df = pd.read_csv(latest_file, encoding='utf-8-sig', sep='|')
-            else:
-                st.error("Nincs megfelelő CSV fájl!")
-                return pd.DataFrame()
+                
+                # Ellenőrizzük, hogy sikerült-e betölteni
+                if df.empty:
+                    continue  # Próbáljuk a következő pattern-t
+                
+                print(f"✅ Sikeresen betöltve: {len(df)} sor")
+                
+                # Numerikus konverziók
+                df['teljes_ar_millió'] = df['teljes_ar'].apply(parse_million_ft)
+                df['terulet_szam'] = df['terulet'].apply(parse_area)
+                df['szobak_szam'] = df['szobak'].apply(parse_rooms)
+                
+                # Családbarát pontszám számítása
+                df['csaladbarati_pontszam'] = df.apply(create_family_score, axis=1)
+                
+                return df
         
-        # Numerikus konverziók
-        df['teljes_ar_millió'] = df['teljes_ar'].apply(parse_million_ft)
-        df['terulet_szam'] = df['terulet'].apply(parse_area)
-        df['szobak_szam'] = df['szobak'].apply(parse_rooms)
-        
-        # Családbarát pontszám számítása
-        df['csaladbarati_pontszam'] = df.apply(create_family_score, axis=1)
-        
-        return df
+        # Ha egyik pattern sem működött
+        st.error("HIBA: Nincs található CSV fájl a megadott pattern-ekhez!")
+        return pd.DataFrame()
         
     except Exception as e:
         st.error(f"Adatbetöltési hiba: {e}")
