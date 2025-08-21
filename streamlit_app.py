@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 import re
+import os
 from datetime import datetime
 import glob
 import warnings
@@ -14,7 +15,7 @@ def get_location_from_filename():
     # Új egyszerűsített formátum: ingatlan_reszletes_uepitve_kozott_epitve_utan_ii_ker_20250821_165032.csv
     detailed_files = glob.glob("ingatlan_reszletes_*.csv")
     if detailed_files:
-        latest_file = max(detailed_files)
+        latest_file = max(detailed_files, key=lambda f: os.path.getmtime(f))
         print(f"📂 Legújabb CSV: {latest_file}")
         filename_parts = latest_file.replace('.csv', '').split('_')
         print(f"🔍 Fájlnév részek: {filename_parts}")
@@ -57,7 +58,7 @@ def get_location_from_filename():
     # Fallback: régi enhanced fájlok
     enhanced_files = glob.glob("ingatlan_reszletes_enhanced_text_features_*.csv")
     if enhanced_files:
-        latest_file = max(enhanced_files)
+        latest_file = max(enhanced_files, key=lambda f: os.path.getmtime(f))
         filename_parts = latest_file.replace('.csv', '').split('_')
         if len(filename_parts) >= 13:
             location_parts = []
@@ -74,7 +75,7 @@ def get_location_from_filename():
     # Fallback: régi modern fájlok
     modern_files = glob.glob("ingatlan_modern_enhanced_*.csv")
     if modern_files:
-        latest_file = max(modern_files)
+        latest_file = max(modern_files, key=lambda f: os.path.getmtime(f))
         filename_parts = latest_file.replace('.csv', '').split('_')
         if len(filename_parts) >= 4:
             return filename_parts[3].capitalize()
