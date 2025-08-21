@@ -29,26 +29,46 @@ TEXT_ANALYSIS_AVAILABLE = True  # Enhanced Mode mindig elérhető
 
 @st.cache_data(ttl=10)  # 10 másodperc cache
 def load_data():
-    """Modern Enhanced Budaörs adatok betöltése"""
+    """Budaörs adatok betöltése - FIX lokáció, dinamikus időbélyeg"""
     try:
-        # 1. LEGMAGASABB PRIORITÁS: modern enhanced budaörs fájlok
         import glob
-        modern_enhanced_files = glob.glob("ingatlan_modern_enhanced_budaors_*.csv")
-        if modern_enhanced_files:
-            latest_file = max(modern_enhanced_files)
+        import os
+        
+        # Fix lokáció pattern - mindig a legfrissebb Budaörs CSV-t keressük
+        # 1. PRIORITÁS: enhanced text features budaörs fájlok
+        location_pattern = "ingatlan_reszletes_enhanced_text_features_elado_haz_80_500_mFt_budaors_*.csv"
+        matching_files = glob.glob(location_pattern)
+        
+        if matching_files:
+            # Legfrissebb fájl kiválasztása időbélyeg alapján (fájl módosítás ideje szerint)
+            latest_file = max(matching_files, key=lambda f: os.path.getmtime(f))
+            print(f"📊 Legfrissebb Budaörs enhanced CSV betöltése: {latest_file}")
             df = pd.read_csv(latest_file, encoding='utf-8-sig', sep='|')
             return df, latest_file
         
-        # 2. MÁSODIK PRIORITÁS: enhanced text features budaörs fájlok
-        modern_files = glob.glob("ingatlan_reszletes_enhanced_text_features_elado_haz_80_500_mFt_budaors_*.csv")
-        if modern_files:
-            latest_file = max(modern_files)
+        # 2. FALLBACK: modern enhanced budaörs fájlok
+        location_pattern2 = "ingatlan_modern_enhanced_budaors_*.csv"
+        matching_files2 = glob.glob(location_pattern2)
+        
+        if matching_files2:
+            latest_file = max(matching_files2, key=lambda f: os.path.getmtime(f))
+            print(f"📊 Legfrissebb Budaörs modern CSV betöltése: {latest_file}")
             df = pd.read_csv(latest_file, encoding='utf-8-sig', sep='|')
             return df, latest_file
-        else:
-            # 3. FALLBACK ha nincs budaörs specific fájl
-            df = pd.read_csv("ingatlan_reszletes_enhanced_text_features.csv", encoding='utf-8-sig', sep='|')
-            return df, "ingatlan_reszletes_enhanced_text_features.csv"
+        
+        # 3. UTOLSÓ FALLBACK - általános részletes fájl
+        fallback_pattern = "ingatlan_reszletes_*budaors*.csv"
+        fallback_files = glob.glob(fallback_pattern)
+        
+        if fallback_files:
+            latest_file = max(fallback_files, key=lambda f: os.path.getmtime(f))
+            print(f"📊 Fallback Budaörs CSV betöltése: {latest_file}")
+            df = pd.read_csv(latest_file, encoding='utf-8-sig', sep='|')
+            return df, latest_file
+        
+        # 4. LEGUTOLSÓ FALLBACK
+        df = pd.read_csv("ingatlan_reszletes_enhanced_text_features.csv", encoding='utf-8-sig', sep='|')
+        return df, "ingatlan_reszletes_enhanced_text_features.csv"
         
         # Numerikus konverziók
         if 'nm_ar' in df.columns:
