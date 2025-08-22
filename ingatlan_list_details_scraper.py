@@ -772,10 +772,6 @@ class KomplettIngatlanPipeline:
         print(f"   🔍 Részletes CSV: {self.details_csv_file}")
         print(f"   🎨 Dashboard: {self.dashboard_file}")
         
-        print(f"\n✅ DASHBOARD AUTOMATIKUSAN ELINDÍTVA!")
-        print(f"🔗 Elérés: http://localhost:{port}")
-        print(f"   💡 A dashboard fut a háttérben")
-        
         # Statisztikák
         try:
             if os.path.exists(self.details_csv_file):
@@ -1355,16 +1351,20 @@ class DetailedScraper:
                             if not value or "nincs megadva" in value.lower():
                                 continue
                             
-                            # Prioritásos mezők
+                            # Prioritásos mezők - dupla logolás elkerülése
                             if 'ingatlan állapota' in label or 'állapot' in label:
-                                table_data['ingatlan_allapota'] = value
-                                print(f"    🎯 Állapot: {value}")
+                                # Csak akkor írja ki újra, ha még nincs beállítva vagy eltérő az érték
+                                if 'ingatlan_allapota' not in table_data or table_data['ingatlan_allapota'] != value:
+                                    table_data['ingatlan_allapota'] = value
+                                    print(f"    🎯 Állapot: {value}")
                             elif 'szint' in label and 'szintjei' not in label:
-                                table_data['szint'] = value
-                                print(f"    🎯 Szint: {value}")
+                                if 'szint' not in table_data or table_data['szint'] != value:
+                                    table_data['szint'] = value
+                                    print(f"    🎯 Szint: {value}")
                             elif 'emelet' in label:
-                                table_data['szint'] = value
-                                print(f"    🎯 Emelet: {value}")
+                                if 'szint' not in table_data or table_data['szint'] != value:
+                                    table_data['szint'] = value
+                                    print(f"    🎯 Emelet: {value}")
                             elif 'építés éve' in label:
                                 table_data['epitesi_ev'] = value
                             elif 'fűtés' in label:
@@ -1432,7 +1432,9 @@ class DetailedScraper:
                 if field not in details:
                     details[field] = ""
             
-            print(f"  ✅ Kinyert mezők: {len([v for v in additional_fields.values() if v])}")
+            # Javított logolás - additional_fields lista, nem dictionary
+            filled_fields = [field for field in additional_fields if details.get(field, "")]
+            print(f"  ✅ Kinyert mezők: {len(filled_fields)}/{len(additional_fields)}")
             return details
             
         except Exception as e:
