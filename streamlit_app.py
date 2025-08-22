@@ -816,9 +816,6 @@ def create_interactive_map(df, location_name):
         else:
             return '#8E44AD'  # Lila - nagyon drága
     
-    # Enhanced lokáció oszlop meghatározása (már nem használjuk színkódolásra)
-    district_col = 'enhanced_keruleti_resz' if 'enhanced_keruleti_resz' in map_df.columns else 'varosresz_kategoria'
-    
     # Markerek hozzáadása
     for idx, row in map_df.iterrows():
         try:
@@ -847,7 +844,7 @@ def create_interactive_map(df, location_name):
                 <p style='margin: 2px 0;'><b>📐 Terület:</b> {terulet}</p>
                 <p style='margin: 2px 0;'><b>🏗️ Állapot:</b> {allapot}</p>
                 <p style='margin: 2px 0;'><b>⭐ AI Pontszám:</b> {netto_pont:.1f}</p>
-                <p style='margin: 5px 0;'><a href='{url}' target='_blank' style='color: #2E86AB;'>🔗 Részletek</a></p>
+                <p style='margin: 5px 0;'><a href='{url}' target='_blank' style='color: #2E86AB;'>🔗 Hirdetés megnyitása</a></p>
             </div>
             """
             

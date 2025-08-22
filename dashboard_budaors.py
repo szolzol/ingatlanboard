@@ -730,6 +730,8 @@ def create_interactive_map(df, location_name):
     for idx, row in map_df.iterrows():
         # Popup tartalom
         price = row.get('teljes_ar_millió', 'N/A')
+        # Ingatlan.com URL generálása
+        ingatlan_url = row.get('link', '#')
         popup_content = f"""
         <b>{row.get('cim', 'N/A')}</b><br/>
         💰 Ár: {row.get('teljes_ar', 'N/A')}<br/>
@@ -737,7 +739,7 @@ def create_interactive_map(df, location_name):
         🛏️ Szobák: {row.get('szobak', 'N/A')}<br/>
         🔧 Állapot: {row.get('ingatlan_allapota', 'N/A')}<br/>
         👨‍👩‍👧‍👦 Családbarát pont: {row.get('csaladbarati_pontszam', 0):.0f}<br/>
-        🏢 Városrész: {row.get(district_col, 'N/A')}
+        🔗 <a href='{ingatlan_url}' target='_blank' style='color: #2E86AB;'>Hirdetés megnyitása</a>
         """
         
         # Marker hozzáadása
