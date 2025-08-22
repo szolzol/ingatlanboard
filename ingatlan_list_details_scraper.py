@@ -201,10 +201,10 @@ class KomplettIngatlanPipeline:
         print("\n🔗 1. LÉPÉS: KERESÉSI URL MEGADÁSA")
         print("="*40)
         print("💡 Példa URL-ek:")
-        print("   https://ingatlan.com/szukites/elado+lakas+kobanyi-ujhegy")
+        print("   https://ingatlan.com/lista/elado+lakas+kobanya-ujhegyi-lakotelep")
         print("   https://ingatlan.com/lista/elado+haz+erd-erdliget")
-        print("   https://ingatlan.com/szukites/elado+lakas+xiii-kerulet")
-        print("   https://ingatlan.com/lista/elado+lakas+budapest")
+        print("   https://ingatlan.com/lista/elado+haz+budaors")
+        print("   https://ingatlan.com/lista/elado+lakas+100-500-m2+xi-ker")
         
         while True:
             url = input("\n📍 Add meg a keresési URL-t: ").strip()
@@ -227,7 +227,7 @@ class KomplettIngatlanPipeline:
         print("   10   - Gyors teszt (2-3 perc)")
         print("   50   - Közepes minta (8-12 perc)")
         print("   100  - Nagy minta (15-25 perc)")
-        print("   300  - Teljes állomány (45-90 perc)")
+        print("   300  - Óriás minta (45-90 perc)")
         
         while True:
             try:
@@ -531,54 +531,73 @@ class KomplettIngatlanPipeline:
         return start_port  # Ha nem talál, visszaadja az eredetit
     
     def _create_custom_dashboard(self):
-        """Dashboard template testreszabása"""
+        """Dashboard template testreszabása - ÚJ TEMPLATE PLACEHOLDER RENDSZER"""
         try:
             # streamlit_app.py template beolvasása
             if not os.path.exists('streamlit_app.py'):
                 print("❌ Dashboard template nem található!")
                 return False
-            
+
             with open('streamlit_app.py', 'r', encoding='utf-8') as f:
                 template = f.read()
-            
+
             # Lokáció név formázása megjelenítéshez
-            display_name = self.location_name.replace('_', ' ').title()
-            display_name = re.sub(r'\bElado\b', 'Eladó', display_name)
-            display_name = re.sub(r'\bHaz\b', 'Ház', display_name) 
-            display_name = re.sub(r'\bLakas\b', 'Lakás', display_name)
+            display_name = self.location_name.replace('_', ' ').upper()
+            display_name = re.sub(r'\bELADO\b', 'ELADÓ', display_name)
+            display_name = re.sub(r'\bHAZ\b', 'HÁZ', display_name) 
+            display_name = re.sub(r'\bLAKAS\b', 'LAKÁS', display_name)
+            display_name = re.sub(r'\bKER\b', 'KERÜLET', display_name)
+
+            print(f"📝 Dashboard generálás: {self.location_name} -> {display_name}")
+
+            # ÚJ TEMPLATE PLACEHOLDER CSERÉK
+            # 1. Location név placeholder cseréje
+            customized = template.replace("{{LOCATION_NAME}}", display_name)
+
+            # 2. CSV Pattern placeholder-ek cseréje - lokáció alapú pattern generálás
+            base_location = self.location_name.lower()
             
-            # Template módosítások - streamlit_app.py alapján
-            customizations = {
-                # Címek és főbb szövegek
-                r'Erdligeti Házak Dashboard': f'{display_name} Dashboard',
-                r'🏠 Eladó Ház Erd Erdliget - Ingatlan Dashboard': f'🏠 {display_name} - Ingatlan Dashboard',
-                r'ELADÓ HÁZ ERD ERDLIGET - EGYSZERŰ DASHBOARD': f'{display_name.upper()} - DASHBOARD',
-                r'Eladó Ház Erd Erdliget': display_name,
-                
-                # CSV fájlnév lecserélése a legfrissebb enhanced fájlra  
-                r'"ingatlan_reszletes_enhanced_text_features\.csv"': f'"{self.details_csv_file}"',
-                r'ingatlan_reszletes_enhanced_text_features\.csv': self.details_csv_file,
-            }
+            # Dinamikus CSV pattern-ek generálása
+            csv_patterns = []
             
-            # Módosítások alkalmazása
-            customized = template
-            for pattern, replacement in customizations.items():
-                customized = re.sub(pattern, replacement, customized)
+            # Pattern 1: Részletes enhanced fájlok (prioritás)
+            if 'enhanced_text_features' in self.details_csv_file:
+                pattern1 = f"ingatlan_reszletes_enhanced_text_features_*{base_location}*.csv"
+            else:
+                pattern1 = f"ingatlan_reszletes_*{base_location}*.csv"
+            csv_patterns.append(pattern1)
             
-            # Load_data függvény frissítése az új CSV fájlnévvel és pipe elválasztóval
-            # Keressük és cseréljük le a pd.read_csv hívásokat pipe elválasztóval
-            customized = re.sub(
-                r'pd\.read_csv\("ingatlan_reszletes_enhanced_text_features_elado_haz_80_500_mFt_budaors_20250821_000513\.csv", encoding=\'utf-8-sig\'\)',
-                f'pd.read_csv("{self.details_csv_file}", encoding=\'utf-8-sig\', sep=\'|\')',
-                customized
-            )
+            # Pattern 2: Modern enhanced fájlok (fallback)  
+            pattern2 = f"ingatlan_modern_enhanced_{base_location}_*.csv"
+            csv_patterns.append(pattern2)
             
-            # Általános pd.read_csv lecserélése a megfelelő fájlnévvel és pipe elválasztóval
-            customized = re.sub(
-                r'pd\.read_csv\("([^"]*enhanced_text_features[^"]*\.csv)", encoding=\'utf-8-sig\'\)',
-                f'pd.read_csv("{self.details_csv_file}", encoding=\'utf-8-sig\', sep=\'|\')',
-                customized
-            )
+            # Pattern 3: Általános keresés (utolsó fallback)
+            pattern3 = f"ingatlan_*{base_location}*.csv"
+            csv_patterns.append(pattern3)
+
+            # CSV pattern placeholder-ek cseréje
+            customized = customized.replace("{{CSV_PATTERN_1}}", csv_patterns[0])
+            customized = customized.replace("{{CSV_PATTERN_2}}", csv_patterns[1])  
+            customized = customized.replace("{{CSV_PATTERN_3}}", csv_patterns[2])
+
+            print(f"📊 Generált CSV pattern-ek:")
+            for i, pattern in enumerate(csv_patterns, 1):
+                print(f"   Pattern {i}: {pattern}")
+
+            # Dashboard fájl mentése
+            dashboard_filename = f"dashboard_{self.location_name}.py"
+            with open(dashboard_filename, 'w', encoding='utf-8') as f:
+                f.write(customized)
+
+            print(f"✅ Dashboard létrehozva: {dashboard_filename}")
+            print(f"🎯 Lokáció: {display_name}")
+            print(f"📁 CSV minta: {csv_patterns[0]}")
+
+            return True
+
+        except Exception as e:
+            print(f"❌ Dashboard létrehozási hiba: {e}")
+            return False
             
             # Dinamikus szemantikai elemzés generálása
             semantic_insights = self._generate_dynamic_semantic_insights()
@@ -754,7 +773,7 @@ class KomplettIngatlanPipeline:
         print(f"   🎨 Dashboard: {self.dashboard_file}")
         
         print(f"\n✅ DASHBOARD AUTOMATIKUSAN ELINDÍTVA!")
-        print(f"   🌐 Elérhető: http://localhost:8501+ (vagy következő elérhető port)")
+        print(f"🔗 Elérés: http://localhost:{port}")
         print(f"   💡 A dashboard fut a háttérben")
         
         # Statisztikák
@@ -763,12 +782,8 @@ class KomplettIngatlanPipeline:
                 df = pd.read_csv(self.details_csv_file)
                 print(f"\n📈 STATISZTIKÁK:")
                 print(f"   📍 Összesen: {len(df)} ingatlan")
-                if 'szint' in df.columns:
-                    floor_count = df['szint'].notna().sum()
-                    print(f"   🏢 Emelet adat: {floor_count}/{len(df)} ({floor_count/len(df)*100:.1f}%)")
-                if 'hirdeto_tipus' in df.columns:
-                    adv_count = df['hirdeto_tipus'].notna().sum()
-                    print(f"   👤 Hirdető típus: {adv_count}/{len(df)} ({adv_count/len(df)*100:.1f}%)")
+                print(f"   🏠 Átlag ár: {df['Ár (Ft)'].mean():,.0f} Ft")
+                print(f"   📏 Átlag alapterület: {df['Alapterület (m²)'].mean():,.0f} m²")
         except:
             pass
 
@@ -1390,9 +1405,7 @@ class DetailedScraper:
             # Ha még mindig ismeretlen, akkor alapértelmezett
             if details['hirdeto_tipus'] == "ismeretlen":
                 details['hirdeto_tipus'] = "bizonytalan"
-                
-            print(f"    👤 Hirdető: {details['hirdeto_tipus']}")
-            
+                            
             # További mezők alapértékekkel
             additional_fields = ['ingatlanos', 'telefon', 'allapot', 'epulet_szintjei', 
                                'kilatas', 'parkolohely_ara', 'komfort', 'legkondicionalas',
@@ -1403,7 +1416,7 @@ class DetailedScraper:
                 if field not in details:
                     details[field] = ""
             
-            print(f"  ✅ Kinyert mezők: {len([v for v in details.values() if v])}")
+            print(f"  ✅ Kinyert mezők: {len([v for v in additional_fields.values() if v])}")
             return details
             
         except Exception as e:
@@ -1434,7 +1447,6 @@ class DetailedScraper:
                             
                             # CSAK akkor magánszemély, ha pontosan "Magánszemély" szöveget találunk
                             if text_clean == 'Magánszemély':
-                                print(f"    🎯 HTML-ből azonosítva: Magánszemély")
                                 return "maganszemely"
                                 
                             # Ha ingatlaniroda vagy egyéb professional kifejezés
@@ -1997,24 +2009,11 @@ class DetailedScraper:
             
             print(f"✅ Text feature-k generálva: {processed_count} ingatlanhoz")
             
-            # MODERN FEATURE STATISZTIKÁK
-            print(f"📊 ENHANCED FEATURE STATISZTIKÁK (2025 TRENDEK):")
-            print(f"🌞 Zöld Energia: {df['van_zold_energia'].sum()} ingatlan")
-            print(f"🏊 Wellness & Luxury: {df['van_wellness_luxury'].sum()} ingatlan")
-            print(f"🏠 Smart Technology: {df['van_smart_tech'].sum()} ingatlan")
-            print(f"💎 Premium Design: {df['van_premium_design'].sum()} ingatlan")
-            print(f"🚗 Premium Parking: {df['van_premium_parking'].sum()} ingatlan")
-            print(f"🌿 Premium Location: {df['van_premium_location'].sum()} ingatlan")
-            print(f"�️ Build Quality: {df['van_build_quality'].sum()} ingatlan")
-            print(f"⚠️ Negatív tényezők: {df['van_negativ_elem'].sum()} ingatlan")
-            
             # Enhanced CSV mentése PIPE elválasztóval
             df.to_csv(base_filename, index=False, encoding='utf-8-sig', sep='|')
             
-            print(f"🌟 Enhanced CSV mentve (| elválasztó): {base_filename}")
             print(f"📊 Oszlopok: {len(df.columns)} (+ {len(text_feature_columns)} text feature)")
-            print(f"✨ Használatra kész az Enhanced ML modellhez!")
-            
+
             return base_filename  # Az enhanced fájlt adjuk vissza
             
         except Exception as e:
