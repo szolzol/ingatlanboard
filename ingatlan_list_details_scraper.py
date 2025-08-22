@@ -1122,12 +1122,27 @@ class UrlListScraper:
         return None
     
     def save_to_csv(self, properties):
-        """CSV mentés automatikus fájlnévvel pipe elválasztóval"""
+        """CSV mentés automatikus fájlnévvel pipe elválasztóval + duplikáció szűrés"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"ingatlan_lista_{self.location_name}_{timestamp}.csv"
             
             df = pd.DataFrame(properties)
+            original_count = len(df)
+            
+            # 🔥 DUPLIKÁCIÓ SZŰRÉS - ár, terület és cím alapján
+            print(f"🧹 Duplikáció szűrés indítása...")
+            print(f"   📊 Eredeti rekordok: {original_count}")
+            
+            if len(df) > 0:
+                # Duplikátumok eltávolítása (első előfordulást megtartjuk)
+                df_clean = df.drop_duplicates(subset=['cim', 'teljes_ar', 'terulet'], keep='first')
+                duplicates_removed = original_count - len(df_clean)
+                
+                print(f"   🗑️ Eltávolított duplikátumok: {duplicates_removed}")
+                print(f"   ✅ Egyedi rekordok: {len(df_clean)}")
+                
+                df = df_clean
             
             # Oszlop sorrend
             columns = ['id', 'cim', 'teljes_ar', 'nm_ar', 'terulet', 'telekterulet', 'szobak', 'kepek_szama', 'link']
@@ -1138,6 +1153,7 @@ class UrlListScraper:
             df.to_csv(filename, index=False, encoding='utf-8-sig', sep='|')
             
             print(f"💾 Lista CSV mentve (| elválasztó): {filename}")
+            print(f"📊 Végső rekordszám: {len(df)}")
             return filename
             
         except Exception as e:
@@ -1892,12 +1908,27 @@ class DetailedScraper:
         }
     
     def save_to_csv(self, detailed_data):
-        """Részletes CSV mentés Enhanced Text Feature-kkel"""
+        """Részletes CSV mentés Enhanced Text Feature-kkel + duplikáció szűrés"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             base_filename = f"ingatlan_reszletes_{self.location_name}_{timestamp}.csv"
             
             df = pd.DataFrame(detailed_data)
+            original_count = len(df)
+            
+            # 🔥 DUPLIKÁCIÓ SZŰRÉS - ár, terület és cím alapján
+            print(f"🧹 Részletes adatok duplikáció szűrése...")
+            print(f"   📊 Eredeti rekordok: {original_count}")
+            
+            if len(df) > 0:
+                # Duplikátumok eltávolítása (első előfordulást megtartjuk)
+                df_clean = df.drop_duplicates(subset=['cim', 'teljes_ar', 'terulet'], keep='first')
+                duplicates_removed = original_count - len(df_clean)
+                
+                print(f"   🗑️ Eltávolított duplikátumok: {duplicates_removed}")
+                print(f"   ✅ Egyedi rekordok: {len(df_clean)}")
+                
+                df = df_clean
             
             # Oszlop sorrend
             priority_cols = ['id', 'cim', 'reszletes_cim', 'teljes_ar', 'reszletes_ar', 
@@ -1914,6 +1945,7 @@ class DetailedScraper:
             # Alap CSV mentése (backup) PIPE elválasztóval
             df.to_csv(base_filename, index=False, encoding='utf-8-sig', sep='|')
             print(f"💾 Alap CSV mentve (| elválasztó): {base_filename}")
+            print(f"📊 Végső rekordszám: {len(df)}")
             
             # 🌟 ENHANCED TEXT FEATURES GENERÁLÁS
             print(f"� Enhanced text feature-k generálása...")
