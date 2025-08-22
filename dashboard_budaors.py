@@ -1,25 +1,13 @@
 """
-STREAMLIT DASHBOARD TEMPLATE - INGATLAN ELEMZÉS
+BUDAÖRS INGATLAN DASHBOARD - KOORDINÁTÁS VERZIÓ
 ===============================================
 
-🎯 HASZNÁLAT:
-1. Másold le ezt a template fájlt új névvel (pl. dashboard_location.py)
-2. Cseréld le a TEMPLATE placeholder-eket:
-   - {{LOCATION_NAME}} -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
-   - {{CSV_PATTERN_1}}, {{CSV_PATTERN_2}}, {{CSV_PATTERN_3}} -> konkrét CSV pattern-ek
+🎯 Budaörs ingatlanok interaktív térkép-alapú elemzése
+📍 GPS koordináták: 100% lefedettség
+🗺️ Interaktív folium térkép ár-alapú színkódolással
 
-📋 PÉLDA CSERÉK:
-- Törökbálint-Tükörhegy esetén:
-  {{LOCATION_NAME}} -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
-  {{CSV_PATTERN_1}} -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
-  
-- XII. kerület esetén:
-  {{LOCATION_NAME}} -> "XII. KERÜLET" 
-  {{CSV_PATTERN_1}} -> "ingatlan_reszletes_*xii_ker*.csv"
-
-⚡ Fix lokáció + dinamikus időbélyeg = deployment stable + auto-update!
+Generated from streamlit_app.py template on: 2025.08.22
 """
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -34,11 +22,10 @@ import folium
 from streamlit_folium import st_folium
 warnings.filterwarnings('ignore')
 
-# TEMPLATE PLACEHOLDER - Location név és CSV pattern
-# Ezt a részt kell módosítani egyedi dashboard generálásnál
+# BUDAÖRS SPECIFIKUS BEÁLLÍTÁSOK
 def get_location_from_filename():
-    """Fix location név visszaadása - ezt módosítani kell egyedi dashboard-oknál"""
-    return "{{LOCATION_NAME}}"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
+    """Fix location név visszaadása - Budaörs esetére"""
+    return "BUDAÖRS"
 
 location_name = get_location_from_filename()
 timestamp = datetime.now().strftime("%Y.%m.%d %H:%M")
@@ -52,21 +39,17 @@ st.set_page_config(
 )
 
 def load_and_process_data():
-    """Adatok betöltése és feldolgozása - TEMPLATE: fix lokáció, dinamikus időbélyeg"""
+    """Adatok betöltése és feldolgozása - Budaörs koordinátás CSV prioritással"""
     try:
-        # TEMPLATE PLACEHOLDER - CSV lokáció pattern
-        # Ezt a részt kell módosítani egyedi dashboard generálásnál
+        # Budaörs CSV pattern - koordinátás verzió prioritással
         location_patterns = [
-            "{{CSV_PATTERN_1}}",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
-            "{{CSV_PATTERN_2}}",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
-            "{{CSV_PATTERN_3}}"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
+            "ingatlan_reszletes_budaors_*_koordinatak_*.csv",  # Koordinátás verzió - prioritás
+            "ingatlan_reszletes_budaors_*.csv",                # Eredeti verzió fallback
+            "ingatlan_*budaors*.csv"                           # Általános pattern
         ]
         
         # Fix lokáció pattern keresés - mindig a legfrissebb CSV-t választja
         for pattern in location_patterns:
-            if pattern.startswith("{{") and pattern.endswith("}}"):
-                continue  # Skip template placeholders
-                
             matching_files = glob.glob(pattern)
             if matching_files:
                 # Legfrissebb fájl kiválasztása időbélyeg alapján (fájl módosítás ideje szerint)
@@ -79,20 +62,32 @@ def load_and_process_data():
                 if df.empty:
                     continue  # Próbáljuk a következő pattern-t
                 
-                print(f"✅ Sikeresen betöltve: {len(df)} sor")
+                # Numerikus konverziók - hibakezelő módon
+                if 'teljes_ar' in df.columns:
+                    df['teljes_ar_millió'] = df['teljes_ar'].apply(parse_million_ft)
                 
-                # Numerikus konverziók
-                df['teljes_ar_millió'] = df['teljes_ar'].apply(parse_million_ft)
-                df['terulet_szam'] = df['terulet'].apply(parse_area)
-                df['szobak_szam'] = df['szobak'].apply(parse_rooms)
+                if 'terulet' in df.columns:
+                    df['terulet_szam'] = df['terulet'].apply(parse_area)
+                
+                if 'szobak' in df.columns:
+                    df['szobak_szam'] = df['szobak'].apply(parse_rooms)
                 
                 # Családbarát pontszám számítása
                 df['csaladbarati_pontszam'] = df.apply(create_family_score, axis=1)
                 
+                # Modern nettó pont számítás
+                modern_columns = ['zold_energia_premium_pont', 'wellness_luxury_pont', 'smart_technology_pont', 'premium_design_pont']
+                available_modern_cols = [col for col in modern_columns if col in df.columns]
+                if available_modern_cols:
+                    df['modern_netto_pont'] = df[available_modern_cols].fillna(0).sum(axis=1)
+                else:
+                    df['modern_netto_pont'] = 0
+                
+                print(f"✅ Betöltve: {len(df)} rekord")
                 return df
         
         # Ha egyik pattern sem működött
-        st.error("HIBA: Nincs található CSV fájl a megadott pattern-ekhez!")
+        st.error("HIBA: Nincs található Budaörs CSV fájl!")
         return pd.DataFrame()
         
     except Exception as e:
@@ -188,15 +183,14 @@ def generate_ingatlan_url(row):
     try:
         # Próbáljuk meg a link oszlopból
         if pd.notna(row.get('link')):
-            return str(row['link'])
-        # Fallback: generált URL (de ez nem lesz pontos)
+            return row['link']
         elif pd.notna(row.get('id')):
-            return f"https://ingatlan.com/elado+haz/{int(row['id'])}"
+            return f"https://ingatlan.com/szukites/{row['id']}"
         return None
     except (KeyError, AttributeError, TypeError):
         # Ha valami hiba lenne, fallback
         if pd.notna(row.get('id')):
-            return f"https://ingatlan.com/elado+haz/{int(row['id'])}"
+            return f"https://ingatlan.com/szukites/{row['id']}"
         return None
 
 def create_clickable_link(text, url):
@@ -228,15 +222,15 @@ def main():
         
         # Ha min és max azonos, akkor nem csinálunk slider-t
         if min_price == max_price:
-            st.sidebar.write(f"💰 **Ár:** {min_price:.1f} M Ft")
-            price_range = (min_price, max_price)
+            price_range = None
+            st.sidebar.write(f"💰 Ár: {min_price} M Ft (fix)")
         else:
             price_range = st.sidebar.slider(
-                "💰 Ár (M Ft)", 
-                min_value=min_price, 
-                max_value=max_price, 
+                "💰 Ár (millió Ft)",
+                min_value=min_price,
+                max_value=max_price,
                 value=(min_price, max_price),
-                step=5.0
+                step=1.0
             )
     else:
         price_range = None
@@ -248,15 +242,15 @@ def main():
         
         # Ha min és max azonos, akkor nem csinálunk slider-t
         if min_area == max_area:
-            st.sidebar.write(f"📐 **Terület:** {min_area} m²")
-            area_range = (min_area, max_area)
+            area_range = None
+            st.sidebar.write(f"📏 Terület: {min_area} m² (fix)")
         else:
             area_range = st.sidebar.slider(
-                "📐 Terület (m²)", 
-                min_value=min_area, 
-                max_value=max_area, 
-                value=(min_area, max_area),  # VÁLTOZÁS: teljes tartomány alapértelmezett
-                step=10
+                "📏 Terület (m²)",
+                min_value=min_area,
+                max_value=max_area,
+                value=(min_area, max_area),
+                step=5
             )
     else:
         area_range = None
@@ -268,14 +262,15 @@ def main():
         
         # Ha min és max azonos, akkor nem csinálunk slider-t
         if min_rooms == max_rooms:
-            st.sidebar.write(f"🏠 **Szobaszám:** {min_rooms}")
-            rooms_range = (min_rooms, max_rooms)
+            rooms_range = None
+            st.sidebar.write(f"🛏️ Szobák: {min_rooms} (fix)")
         else:
             rooms_range = st.sidebar.slider(
-                "🏠 Szobaszám", 
-                min_value=min_rooms, 
-                max_value=max_rooms, 
-                value=(min_rooms, max_rooms)  # VÁLTOZÁS: teljes tartomány alapértelmezett
+                "🛏️ Szobák száma",
+                min_value=min_rooms,
+                max_value=max_rooms,
+                value=(min_rooms, max_rooms),
+                step=1
             )
     else:
         rooms_range = None
@@ -318,7 +313,7 @@ def main():
     if rooms_range:
         # Csak azokat szűrjük, amelyeknél van szobaszám adat
         filtered_df = filtered_df[
-            (filtered_df['szobak_szam'].isna()) |  # Megtartjuk a NaN értékeket
+            (filtered_df['szobak_szam'].isna()) |
             ((filtered_df['szobak_szam'] >= rooms_range[0]) &
              (filtered_df['szobak_szam'] <= rooms_range[1]))
         ]
@@ -327,19 +322,19 @@ def main():
         filtered_df = filtered_df[filtered_df['ingatlan_allapota'].isin(selected_conditions)]
     
     if filter_green:
-        filtered_df = filtered_df[filtered_df.get('van_zold_energia', False) == True]
+        filtered_df = filtered_df[filtered_df['van_zold_energia'] == True]
     if filter_wellness:
-        filtered_df = filtered_df[filtered_df.get('van_wellness_luxury', False) == True]
+        filtered_df = filtered_df[filtered_df['van_wellness_luxury'] == True]
     if filter_smart:
-        filtered_df = filtered_df[filtered_df.get('van_smart_tech', False) == True]
+        filtered_df = filtered_df[filtered_df['van_smart_tech'] == True]
     if filter_premium:
-        filtered_df = filtered_df[filtered_df.get('van_premium_design', False) == True]
+        filtered_df = filtered_df[filtered_df['van_premium_design'] == True]
     
     # Eredmények megjelenítése
     st.header(f"🏠 Találatok: {len(filtered_df)} ingatlan")
     
     if len(filtered_df) == 0:
-        st.warning("Nincs a szűrőknek megfelelő ingatlan. Próbáljon lazítani a feltételeken!")
+        st.warning("❌ Nincs találat a szűrési feltételeknek megfelelően. Módosítsd a szűrőket!")
         return
     
     # Általános statisztikák
@@ -347,19 +342,19 @@ def main():
     
     with col1:
         avg_price = filtered_df['teljes_ar_millió'].mean()
-        st.metric("💰 Átlagár", f"{avg_price:.1f} M Ft")
+        st.metric("💰 Átlagár", f"{avg_price:.1f} M Ft" if pd.notna(avg_price) else "N/A")
     
     with col2:
         avg_area = filtered_df['terulet_szam'].mean()
-        st.metric("📐 Átlag terület", f"{avg_area:.0f} m²")
+        st.metric("📏 Átlag terület", f"{avg_area:.0f} m²" if pd.notna(avg_area) else "N/A")
     
     with col3:
-        avg_rooms = filtered_df['szobak_szam'].mean()
-        st.metric("🏠 Átlag szobaszám", f"{avg_rooms:.1f}")
+        avg_family = filtered_df['csaladbarati_pontszam'].mean()
+        st.metric("👨‍👩‍👧‍👦 Átlag családbarát pont", f"{avg_family:.0f}" if pd.notna(avg_family) else "N/A")
     
     with col4:
-        avg_family_score = filtered_df['csaladbarati_pontszam'].mean()
-        st.metric("👨‍👩‍👧‍👦 Átlag családbarát pont", f"{avg_family_score:.1f}")
+        coord_count = filtered_df[['geo_latitude', 'geo_longitude']].dropna().shape[0]
+        st.metric("🗺️ GPS koordinátával", f"{coord_count}/{len(filtered_df)}")
     
     # Top 5 legjobb ingatlan
     st.header("🏆 TOP 5 Legcsaládbarátabb Ingatlan")
@@ -367,32 +362,31 @@ def main():
     top_5 = filtered_df.nlargest(5, 'csaladbarati_pontszam')
     
     for idx, (_, row) in enumerate(top_5.iterrows(), 1):
-        # URL generálása
-        ingatlan_url = generate_ingatlan_url(row)
-        title_text = f"#{idx} - {row.get('cim', 'Cím hiányzik')} - {row['csaladbarati_pontszam']:.1f} pont"
-        
-        # Link hozzáadása ha van URL
-        if ingatlan_url:
-            title_with_link = f"{title_text} | [🔗 Megtekintés]({ingatlan_url})"
-        else:
-            title_with_link = title_text
-            
-        with st.expander(title_with_link):
+        with st.expander(f"#{idx} | {row['cim']} | {row['csaladbarati_pontszam']:.0f} pont"):
             col1, col2 = st.columns(2)
             
             with col1:
-                st.write(f"**💰 Ár:** {row.get('teljes_ar', 'N/A')}")
-                st.write(f"**📐 Terület:** {row.get('terulet', 'N/A')}")
-                st.write(f"**🏠 Szobák:** {row.get('szobak', 'N/A')}")
-                st.write(f"**🔧 Állapot:** {row.get('ingatlan_allapota', 'N/A')}")
-                if ingatlan_url:
-                    st.markdown(f"**🔗 Link:** [Ingatlan megtekintése]({ingatlan_url})")
+                st.write(f"💰 **Ár:** {row.get('teljes_ar', 'N/A')}")
+                st.write(f"📏 **Terület:** {row.get('terulet', 'N/A')}")
+                st.write(f"🛏️ **Szobák:** {row.get('szobak', 'N/A')}")
+                st.write(f"🔧 **Állapot:** {row.get('ingatlan_allapota', 'N/A')}")
             
             with col2:
-                st.write(f"**🌞 Zöld energia:** {'✅' if row.get('van_zold_energia', False) else '❌'}")
-                st.write(f"**🏊 Wellness:** {'✅' if row.get('van_wellness_luxury', False) else '❌'}")
-                st.write(f"**🏠 Smart tech:** {'✅' if row.get('van_smart_tech', False) else '❌'}")
-                st.write(f"**💎 Premium design:** {'✅' if row.get('van_premium_design', False) else '❌'}")
+                url = generate_ingatlan_url(row)
+                if url:
+                    st.markdown(f"🔗 **[Megtekintés ingatlan.com-on]({url})**")
+                
+                # Modern funkciók
+                modern_features = []
+                if row.get('van_zold_energia'): modern_features.append("🌞 Zöld energia")
+                if row.get('van_wellness_luxury'): modern_features.append("🏊 Wellness")
+                if row.get('van_smart_tech'): modern_features.append("🏠 Smart tech")
+                if row.get('van_premium_design'): modern_features.append("💎 Premium design")
+                
+                if modern_features:
+                    st.write("⭐ **Modern funkciók:**")
+                    for feature in modern_features:
+                        st.write(f"  - {feature}")
 
     # 🗺️ INTERAKTÍV TÉRKÉP - szűrt adatokkal
     create_interactive_map(filtered_df, location_name)
@@ -426,172 +420,85 @@ def main():
     
     if 'szobak_szam' in filtered_df.columns:
         numeric_columns.append('szobak_szam')
-        column_labels['szobak_szam'] = 'Szobaszám'
+        column_labels['szobak_szam'] = 'Szobák száma'
     
     if 'csaladbarati_pontszam' in filtered_df.columns:
         numeric_columns.append('csaladbarati_pontszam')
-        column_labels['csaladbarati_pontszam'] = 'Családbarát Pont'
+        column_labels['csaladbarati_pontszam'] = 'Családbarát pontszám'
     
     if 'modern_netto_pont' in filtered_df.columns:
         numeric_columns.append('modern_netto_pont')
-        column_labels['modern_netto_pont'] = 'Modern Pont'
+        column_labels['modern_netto_pont'] = 'Modern nettó pont'
     
     if 'kepek_szama' in filtered_df.columns:
         numeric_columns.append('kepek_szama')
-        column_labels['kepek_szama'] = 'Képek Száma'
+        column_labels['kepek_szama'] = 'Képek száma'
     
     # Modern funkciók (boolean -> numeric)
     modern_features = ['van_zold_energia', 'van_wellness_luxury', 'van_smart_tech', 'van_premium_design']
     for feature in modern_features:
         if feature in filtered_df.columns:
             numeric_columns.append(feature)
-            feature_labels = {
-                'van_zold_energia': 'Zöld Energia (0/1)',
-                'van_wellness_luxury': 'Wellness (0/1)',
-                'van_smart_tech': 'Smart Tech (0/1)',
-                'van_premium_design': 'Premium Design (0/1)'
+            feature_names = {
+                'van_zold_energia': '🌞 Zöld energia (van/nincs)',
+                'van_wellness_luxury': '🏊 Wellness & Luxury (van/nincs)',
+                'van_smart_tech': '🏠 Smart Technology (van/nincs)',
+                'van_premium_design': '💎 Premium Design (van/nincs)'
             }
-            column_labels[feature] = feature_labels.get(feature, feature)
+            column_labels[feature] = feature_names[feature]
     
     # Kategorikus változók számérték konverziója
     categorical_vars = []
     if 'ingatlan_allapota' in filtered_df.columns:
-        # Állapot numerikus értékké - javított mapping
-        condition_mapping = {'újépítésű': 5, 'új': 5, 'újszerű': 5, 'felújított': 4, 'kitűnő': 4, 'jó': 3, 'közepes': 2, 'felújítandó': 1, 'rossz': 1}
-        if 'allapot_numeric' not in filtered_df.columns:
-            filtered_df = filtered_df.copy()
-            def map_condition_improved(x):
-                if pd.notna(x):
-                    x_str = str(x).lower()
-                    matched_values = []
-                    for key, value in condition_mapping.items():
-                        if key.lower() in x_str:
-                            matched_values.append(value)
-                    if matched_values:
-                        return max(matched_values)
-                    else:
-                        return 2  # Default középérték
-                return 2
-            filtered_df['allapot_numeric'] = filtered_df['ingatlan_allapota'].apply(map_condition_improved)
-        numeric_columns.append('allapot_numeric')
-        column_labels['allapot_numeric'] = 'Állapot (1=rossz, 5=új)'
-        categorical_vars.append('allapot_numeric')
+        categorical_vars.append('ingatlan_allapota')
+        column_labels['ingatlan_allapota'] = 'Ingatlan állapota (kódolva)'
     
     if 'hirdeto_tipus' in filtered_df.columns:
-        if 'hirdeto_numeric' not in filtered_df.columns:
-            filtered_df = filtered_df.copy()
-            # Hirdető típus: 1=magánszemély, 2=ingatlaniroda - javított mapping
-            def map_hirdeto_improved(x):
-                if pd.notna(x):
-                    x_str = str(x).lower()
-                    if 'maganszemely' in x_str or 'magán' in x_str:
-                        return 1
-                    elif 'ingatlaniroda' in x_str or 'iroda' in x_str:
-                        return 2
-                    else:
-                        return 1  # Default: magánszemély, mert ritkább
-                return 1
-            filtered_df['hirdeto_numeric'] = filtered_df['hirdeto_tipus'].apply(map_hirdeto_improved)
-        numeric_columns.append('hirdeto_numeric')
-        column_labels['hirdeto_numeric'] = 'Hirdető (1=magán, 2=iroda)'
-        categorical_vars.append('hirdeto_numeric')
+        categorical_vars.append('hirdeto_tipus')
+        column_labels['hirdeto_tipus'] = 'Hirdető típusa (kódolva)'
     
     if len(numeric_columns) > 0 and 'teljes_ar_millió' in filtered_df.columns:
-        # Felhasználói választás a magyarázó változóra
-        explanatory_var = st.selectbox(
-            "📊 Válassz magyarázó változót (X tengely)",
+        selected_x = st.selectbox(
+            "Válassz X-tengely változót az ár elemzéshez:",
             options=numeric_columns,
-            index=0,
             format_func=lambda x: column_labels.get(x, x)
         )
         
-        if explanatory_var:
-            # Scatter plot
-            fig_scatter = px.scatter(
-                filtered_df.dropna(subset=[explanatory_var, 'teljes_ar_millió']),
-                x=explanatory_var,
-                y='teljes_ar_millió',
-                color='csaladbarati_pontszam' if 'csaladbarati_pontszam' in filtered_df.columns else None,
-                title=f"Teljes Ár vs. {column_labels.get(explanatory_var, explanatory_var)}",
-                labels={
-                    explanatory_var: column_labels.get(explanatory_var, explanatory_var),
-                    'teljes_ar_millió': 'Teljes Ár (M Ft)',
-                    'csaladbarati_pontszam': 'Családbarát Pont'
-                },
-                hover_data=['cim'] if 'cim' in filtered_df.columns else None
-            )
-            
-            # Trendvonal hozzáadása
-            import numpy as np
-            clean_data = filtered_df.dropna(subset=[explanatory_var, 'teljes_ar_millió'])
-            if len(clean_data) > 1:
-                x_vals = clean_data[explanatory_var].values
-                y_vals = clean_data['teljes_ar_millió'].values
-                
-                # Manuális lineáris regresszió
-                n = len(x_vals)
-                sum_x = np.sum(x_vals)
-                sum_y = np.sum(y_vals)
-                sum_xy = np.sum(x_vals * y_vals)
-                sum_x2 = np.sum(x_vals * x_vals)
-                
-                slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x)
-                intercept = (sum_y - slope * sum_x) / n
-                
-                # R² számítás
-                y_pred = slope * x_vals + intercept
-                ss_res = np.sum((y_vals - y_pred) ** 2)
-                ss_tot = np.sum((y_vals - np.mean(y_vals)) ** 2)
-                r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
-                
-                # Trendvonal
-                x_trend = [clean_data[explanatory_var].min(), clean_data[explanatory_var].max()]
-                y_trend = [slope * x + intercept for x in x_trend]
-                
-                fig_scatter.add_scatter(
-                    x=x_trend, y=y_trend, mode='lines', name=f'Trendvonal (R²={r_squared:.3f})',
-                    line=dict(color='red', dash='dash')
-                )
-            
-            st.plotly_chart(fig_scatter, use_container_width=True)
-            
-            # Korrelációs statisztika
-            correlation = filtered_df[explanatory_var].corr(filtered_df['teljes_ar_millió'])
-            st.metric(
-                f"Korreláció: {column_labels.get(explanatory_var, explanatory_var)} ↔ Ár",
-                f"{correlation:.3f}"
-            )
-            
-            # Interpretáció
-            if abs(correlation) > 0.7:
-                strength = "erős"
-            elif abs(correlation) > 0.4:
-                strength = "közepes"
-            elif abs(correlation) > 0.2:
-                strength = "gyenge"
-            else:
-                strength = "nagyon gyenge"
-            
-            direction = "pozitív" if correlation > 0 else "negatív"
-            st.write(f"**Interpretáció:** {strength} {direction} kapcsolat az ár és a {column_labels.get(explanatory_var, explanatory_var).lower()} között.")
+        fig_scatter = px.scatter(
+            filtered_df,
+            x=selected_x,
+            y='teljes_ar_millió',
+            color='csaladbarati_pontszam',
+            hover_data=['cim'],
+            title=f"Ár vs {column_labels.get(selected_x, selected_x)}",
+            labels={
+                selected_x: column_labels.get(selected_x, selected_x),
+                'teljes_ar_millió': 'Ár (M Ft)',
+                'csaladbarati_pontszam': 'Családbarát pontszám'
+            }
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
     else:
-        st.warning("Nincs elég numerikus változó az elemzéshez, vagy hiányzik az ár adat.")
+        st.info("Nincs elegendő numerikus adat a scatter plot elemzéshez.")
     
     # Modern funkciók eloszlás
     if all(col in filtered_df.columns for col in ['van_zold_energia', 'van_wellness_luxury', 'van_smart_tech', 'van_premium_design']):
-        modern_stats = {
-            'Zöld Energia': filtered_df['van_zold_energia'].sum(),
-            'Wellness & Luxury': filtered_df['van_wellness_luxury'].sum(),
-            'Smart Technology': filtered_df['van_smart_tech'].sum(),
-            'Premium Design': filtered_df['van_premium_design'].sum()
+        st.subheader("⭐ Modern Funkciók Eloszlása")
+        
+        modern_counts = {
+            '🌞 Zöld energia': filtered_df['van_zold_energia'].sum(),
+            '🏊 Wellness & Luxury': filtered_df['van_wellness_luxury'].sum(),
+            '🏠 Smart Technology': filtered_df['van_smart_tech'].sum(),
+            '💎 Premium Design': filtered_df['van_premium_design'].sum()
         }
         
-        fig3 = px.bar(
-            x=list(modern_stats.keys()),
-            y=list(modern_stats.values()),
-            title="Modern Funkciók Gyakorisága a Szűrt Ingatlanoknál"
+        fig_modern = px.bar(
+            x=list(modern_counts.keys()),
+            y=list(modern_counts.values()),
+            title="Modern funkciók megoszlása",
+            labels={'x': 'Funkció típusa', 'y': 'Ingatlanok száma'}
         )
-        st.plotly_chart(fig3, use_container_width=True)
+        st.plotly_chart(fig_modern, use_container_width=True)
     
     # Statisztikai összefoglaló táblázat
     st.header("📊 Statisztikai Összefoglaló")
@@ -643,15 +550,13 @@ def main():
     
     # Állapot elemzés
     if 'ingatlan_allapota' in filtered_df.columns:
-        condition_stats = filtered_df['ingatlan_allapota'].value_counts()
-        for condition, count in condition_stats.head(5).items():
-            categorical_cols.append('Állapot')
+        condition_counts = filtered_df['ingatlan_allapota'].value_counts()
+        for condition, count in condition_counts.items():
             categorical_data.append({
-                'Kategória': condition,
+                'Kategória': '🔧 Ingatlan állapot',
+                'Érték': condition,
                 'Darabszám': count,
-                'Arány (%)': round(count / len(filtered_df) * 100, 1),
-                'Átlag Ár (M Ft)': round(filtered_df[filtered_df['ingatlan_allapota'] == condition]['teljes_ar_millió'].mean(), 1),
-                'Átlag Családbarát Pont': round(filtered_df[filtered_df['ingatlan_allapota'] == condition]['csaladbarati_pontszam'].mean(), 1)
+                'Arány (%)': round(count/len(filtered_df)*100, 1)
             })
     
     # Modern funkciók elemzése
@@ -660,21 +565,24 @@ def main():
     
     for feature, name in zip(modern_features, feature_names):
         if feature in filtered_df.columns:
-            has_feature = filtered_df[feature] == True
-            count = has_feature.sum()
-            categorical_cols.append('Modern Funkciók')
+            count_yes = filtered_df[feature].sum()
+            count_no = len(filtered_df) - count_yes
             categorical_data.append({
                 'Kategória': name,
-                'Darabszám': count,
-                'Arány (%)': round(count / len(filtered_df) * 100, 1),
-                'Átlag Ár (M Ft)': round(filtered_df[has_feature]['teljes_ar_millió'].mean(), 1) if count > 0 else 0,
-                'Átlag Családbarát Pont': round(filtered_df[has_feature]['csaladbarati_pontszam'].mean(), 1) if count > 0 else 0
+                'Érték': 'Van',
+                'Darabszám': count_yes,
+                'Arány (%)': round(count_yes/len(filtered_df)*100, 1)
+            })
+            categorical_data.append({
+                'Kategória': name,
+                'Érték': 'Nincs',
+                'Darabszám': count_no,
+                'Arány (%)': round(count_no/len(filtered_df)*100, 1)
             })
     
     if categorical_data:
         categorical_df = pd.DataFrame(categorical_data)
-        categorical_df.insert(0, 'Típus', categorical_cols)
-        st.dataframe(categorical_df, use_container_width=True)
+        st.dataframe(categorical_df, use_container_width=True, hide_index=True)
     
     # Részletes adattábla
     st.header("📋 Részletes Lista")
@@ -691,37 +599,36 @@ def main():
     
     # Valódi ingatlan.com ID kinyerése a linkből + URL generálás
     def extract_ingatlan_id(link):
-        """Valódi ingatlan.com ID kinyerése a linkből"""
+        if pd.isna(link):
+            return "N/A"
         try:
-            if pd.notna(link) and 'ingatlan.com/' in str(link):
-                return str(link).split('/')[-1]
-            return 'N/A'
+            # https://ingatlan.com/szukites/elado+haz+budaors-kertvaros-ganztelep+119-m2+4-szoba+263-8-millió-ft/lista/12345 -> 12345
+            match = re.search(r'/lista/(\d+)', str(link))
+            if match:
+                return match.group(1)
+            # Alternatív pattern: /12345 a végén
+            match = re.search(r'/(\d+)/?$', str(link))
+            if match:
+                return match.group(1)
+            return "Link"
         except:
-            return 'N/A'
+            return "Link"
     
     # Hozzáadjuk a valódi ID-t - JAVÍTOTT verzió Streamlit-kompatibilis
     display_df_with_links = []
     for idx, (_, row) in enumerate(display_df.iterrows(), 1):
-        # URL generálása ugyanúgy, mint a TOP 5-ben
-        ingatlan_url = generate_ingatlan_url(row)
-        ingatlan_id = extract_ingatlan_id(row.get('link'))
-        
-        row_data = {
-            'Ingatlan ID': ingatlan_id,
-            'URL': ingatlan_url if ingatlan_url else 'N/A',  # Sima URL szöveg
+        row_dict = {
+            'Sorszám': idx,
             'Cím': row.get('cim', 'N/A'),
             'Ár': row.get('teljes_ar', 'N/A'),
             'Terület': row.get('terulet', 'N/A'),
             'Szobák': row.get('szobak', 'N/A'),
             'Állapot': row.get('ingatlan_allapota', 'N/A'),
-            'Családbarát Pont': f"{row.get('csaladbarati_pontszam', 0):.1f}"
+            'Családbarát pont': int(row.get('csaladbarati_pontszam', 0)),
+            'Modern pont': round(row.get('modern_netto_pont', 0), 1),
+            'Link': create_clickable_link(extract_ingatlan_id(row.get('link')), row.get('link'))
         }
-        
-        # Modern pont hozzáadása, ha létezik
-        if 'modern_netto_pont' in row.index and pd.notna(row['modern_netto_pont']):
-            row_data['Modern Pont'] = f"{row['modern_netto_pont']:.1f}"
-            
-        display_df_with_links.append(row_data)
+        display_df_with_links.append(row_dict)
     
     # DataFrame létrehozása
     final_display_df = pd.DataFrame(display_df_with_links)
@@ -730,7 +637,7 @@ def main():
     st.dataframe(final_display_df, use_container_width=True, hide_index=True)
     
     # Záró információk
-
+    st.markdown("---")
     st.markdown("**📝 Családbarát Pontszám Számítási Módszer:**")
     st.markdown("""
     A **Családbarát Pontszám** 0-100 pontos skálán értékeli az ingatlanokat, négy fő kategóriában:
@@ -768,7 +675,8 @@ def main():
     st.markdown("- A családbarát pontszám 3 gyerekes családok igényeit figyelembe véve készült")
     st.markdown("- 150+ m² és 4+ szoba ideális nagyobb családok számára")  
     st.markdown("- A modern pontszám további kényelmi és technológiai elemeket értékel")
-    st.markdown("- Az adatok 2025.08.21-i állapot szerint frissültek")
+    st.markdown(f"- Az adatok {timestamp} állapot szerint frissültek")
+    st.markdown(f"- **🗺️ GPS koordináták:** {coord_count}/{len(filtered_df)} ingatlanhoz érhetőek el térképes megjelenítéshez")
 
 def create_interactive_map(df, location_name):
     """🗺️ INTERAKTÍV TÉRKÉP - GPS koordináták alapján"""
@@ -777,14 +685,14 @@ def create_interactive_map(df, location_name):
     has_coordinates = all(col in df.columns for col in ['geo_latitude', 'geo_longitude'])
     
     if not has_coordinates:
-        st.warning("🗺️ Térképes megjelenítés nem elérhető - nincs GPS koordináta az adatokban")
+        st.warning("⚠️ Nincs GPS koordináta adat a térképhez. Koordináták nélküli CSV betöltve.")
         return
     
     # Koordinátákkal rendelkező rekordok szűrése
     map_df = df.dropna(subset=['geo_latitude', 'geo_longitude']).copy()
     
     if map_df.empty:
-        st.warning("🗺️ Térképes megjelenítés nem elérhető - nincs GPS adat a rekordokban")
+        st.warning("⚠️ Nincsenek érvényes GPS koordináták az aktuális szűréshez.")
         return
     
     st.markdown("---")
@@ -804,104 +712,41 @@ def create_interactive_map(df, location_name):
     
     # Színkódolás ár szerint
     def get_price_color(price):
-        """Ár alapú színkódolás"""
         if pd.isna(price):
-            return '#95A5A6'  # Szürke, ha nincs ár
+            return '#95A5A6'  # Szürke - nincs ár adat
         elif price <= 100:
-            return '#2ECC71'  # Zöld - olcsó
+            return '#2ECC71'  # Zöld - olcsó (≤100M)
         elif price <= 200:
-            return '#F39C12'  # Narancs - közepes
+            return '#F39C12'  # Narancssárga - közepes (101-200M)
         elif price <= 300:
-            return '#E74C3C'  # Piros - drága  
+            return '#E74C3C'  # Piros - drága (201-300M)
         else:
-            return '#8E44AD'  # Lila - nagyon drága
+            return '#8E44AD'  # Lila - nagyon drága (300M+)
     
     # Enhanced lokáció oszlop meghatározása (már nem használjuk színkódolásra)
     district_col = 'enhanced_keruleti_resz' if 'enhanced_keruleti_resz' in map_df.columns else 'varosresz_kategoria'
     
     # Markerek hozzáadása
     for idx, row in map_df.iterrows():
-        try:
-            # Ingatlan adatok
-            lat = float(row['geo_latitude'])
-            lng = float(row['geo_longitude'])
-            cim = row.get('cim', 'N/A')[:50]
-            ar = row.get('teljes_ar', 'N/A')
-            terulet = row.get('terulet', 'N/A')
-            allapot = row.get('ingatlan_allapota', 'N/A')
-            url = row.get('link', '#')
-            
-            # Nettó pontszám (Enhanced AI feature)
-            netto_pont = row.get('netto_szoveg_pont', 0)
-            
-            # Színkód meghatározása ár szerint
-            price_value = row.get('teljes_ar_millió', None)
-            color = get_price_color(price_value)
-            
-            # Tooltip HTML tartalma
-            tooltip_html = f"""
-            <div style='width: 250px; font-family: Arial;'>
-                <h4 style='margin: 0; color: #2E86AB;'>🏠 {cim}</h4>
-                <hr style='margin: 5px 0;'>
-                <p style='margin: 2px 0;'><b>💰 Ár:</b> {ar}</p>
-                <p style='margin: 2px 0;'><b>📐 Terület:</b> {terulet}</p>
-                <p style='margin: 2px 0;'><b>🏗️ Állapot:</b> {allapot}</p>
-                <p style='margin: 2px 0;'><b>⭐ AI Pontszám:</b> {netto_pont:.1f}</p>
-                <p style='margin: 5px 0;'><a href='{url}' target='_blank' style='color: #2E86AB;'>🔗 Részletek</a></p>
-            </div>
-            """
-            
-            # Marker hozzáadása
-            folium.CircleMarker(
-                location=[lat, lng],
-                radius=8,
-                popup=folium.Popup(tooltip_html, max_width=300),
-                tooltip=f"{cim} - {ar}",
-                color='white',
-                weight=2,
-                fillColor=color,
-                fillOpacity=0.8
-            ).add_to(m)
-            
-        except Exception as e:
-            st.warning(f"Marker hiba: {e}")
-            continue
-    
-    # Legenda hozzáadása - ár alapú színkódolás
-    legend_html = f"""
-    <div style='position: fixed; 
-                top: 10px; right: 10px; width: 180px; height: auto; 
-                background-color: white; border:2px solid grey; z-index:9999; 
-                font-size:12px; padding: 10px'>
-    <h4 style='margin-top:0;'>� Árszínkódolás</h4>
-    <p style='margin: 3px 0;'>
-        <span style='color:#2ECC71; font-size: 16px;'>●</span> 
-        ≤100 M Ft: olcsó
-    </p>
-    <p style='margin: 3px 0;'>
-        <span style='color:#F39C12; font-size: 16px;'>●</span> 
-        101-200 M Ft: közepes
-    </p>
-    <p style='margin: 3px 0;'>
-        <span style='color:#E74C3C; font-size: 16px;'>●</span> 
-        201-300 M Ft: drága
-    </p>
-    <p style='margin: 3px 0;'>
-        <span style='color:#8E44AD; font-size: 16px;'>●</span> 
-        300+ M Ft: nagyon drága
-    </p>
-    <p style='margin: 3px 0;'>
-        <span style='color:#95A5A6; font-size: 16px;'>●</span> 
-        Nincs ár adat
-    </p>
-    <hr style='margin: 8px 0;'>
-    <p style='margin: 3px 0; font-size: 10px;'>
-        🔗 Kattints a markerekre<br/>részletes információkért
-    </p>
-    </div>
-    """
-    
-    m.get_root().html.add_child(folium.Element(legend_html))
+        # Popup tartalom
+        price = row.get('teljes_ar_millió', 'N/A')
+        popup_content = f"""
+        <b>{row.get('cim', 'N/A')}</b><br/>
+        💰 Ár: {row.get('teljes_ar', 'N/A')}<br/>
+        📏 Terület: {row.get('terulet', 'N/A')}<br/>
+        🛏️ Szobák: {row.get('szobak', 'N/A')}<br/>
+        🔧 Állapot: {row.get('ingatlan_allapota', 'N/A')}<br/>
+        👨‍👩‍👧‍👦 Családbarát pont: {row.get('csaladbarati_pontszam', 0):.0f}<br/>
+        🏢 Városrész: {row.get(district_col, 'N/A')}
+        """
+        
+        # Marker hozzáadása
+        folium.Marker(
+            location=[row['geo_latitude'], row['geo_longitude']],
+            popup=folium.Popup(popup_content, max_width=300),
+            tooltip=f"{row.get('cim', 'N/A')} - {row.get('teljes_ar', 'N/A')}",
+            icon=folium.Icon(color='white', icon_color=get_price_color(price))
+        ).add_to(m)
     
     # Térkép megjelenítése Streamlit-ben
     st_folium(m, width=900, height=500, key=f"map_{location_name.lower().replace(' ', '_')}")

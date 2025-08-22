@@ -23,12 +23,360 @@ import subprocess
 from collections import Counter, defaultdict
 from playwright.async_api import async_playwright
 
+# ENHANCED LOKÁCIÓ MEGHATÁROZÁS - GOOGLE MAPS + SZEMANTIKUS ELEMZÉS
+try:
+    import googlemaps
+    from geopy.distance import geodesic
+    GOOGLE_MAPS_AVAILABLE = True
+except ImportError:
+    print("⚠️ Google Maps és geopy csomagok nem elérhetők. pip install googlemaps geopy")
+    GOOGLE_MAPS_AVAILABLE = False
+
+# ==== ENHANCED LOKÁCIÓ MEGHATÁROZÁSI RENDSZER ====
+
+class GoogleMapsLocationAnalyzer:
+    """Google Maps API-val történő pontos lokáció azonosítás és kerület validálás"""
+    
+    def __init__(self, api_key=None):
+        self.gmaps = None
+        self.available = False
+        if api_key and GOOGLE_MAPS_AVAILABLE:
+            try:
+                self.gmaps = googlemaps.Client(key=api_key)
+                self.available = True
+                print("✅ Google Maps API inicializálva")
+            except Exception as e:
+                print(f"⚠️ Google Maps API hiba: {e}")
+        
+        # XII. kerületi részek és koordinátáik (WGS84)
+        self.district_boundaries = {
+            'Krisztinaváros': {'center': (47.5001, 19.0259), 'radius_km': 1.2},
+            'Svábhegy': {'center': (47.5123, 19.0156), 'radius_km': 1.0},
+            'Orbánhegy': {'center': (47.5089, 19.0089), 'radius_km': 0.8},
+            'Virányos': {'center': (47.5167, 19.0134), 'radius_km': 0.7},
+            'Rózsadomb': {'center': (47.5134, 19.0278), 'radius_km': 1.1},
+            'Zugliget': {'center': (47.5223, 19.0034), 'radius_km': 1.3}
+        }
+    
+    def geocode_address(self, address):
+        """Cím geocoding-ja Google Maps API-val"""
+        if not self.available:
+            return None
+        
+        try:
+            # Budapest hozzáadása ha nincs benne
+            if 'budapest' not in address.lower():
+                address += ', Budapest, Hungary'
+            
+            result = self.gmaps.geocode(address)
+            if result:
+                location = result[0]['geometry']['location']
+                return (location['lat'], location['lng'])
+        except Exception as e:
+            print(f"Geocoding hiba {address}: {e}")
+        
+        return None
+    
+    def get_district_from_coordinates(self, lat, lng):
+        """Koordináták alapján kerületi rész meghatározása"""
+        point = (lat, lng)
+        best_match = None
+        min_distance = float('inf')
+        
+        for district_name, boundary in self.district_boundaries.items():
+            center = boundary['center']
+            distance = geodesic(point, center).kilometers
+            
+            if distance <= boundary['radius_km'] and distance < min_distance:
+                min_distance = distance
+                best_match = {
+                    'district': district_name,
+                    'distance_km': distance,
+                    'confidence': max(0.1, 1.0 - (distance / boundary['radius_km']))
+                }
+        
+        return best_match
+    
+    def analyze_location(self, address, description=""):
+        """Komplex lokáció elemzés coordináták + leírás alapján"""
+        results = {'source': 'google_maps', 'confidence': 0.0}
+        
+        # Geocoding
+        coords = self.geocode_address(address)
+        if coords:
+            district_info = self.get_district_from_coordinates(coords[0], coords[1])
+            if district_info:
+                results.update({
+                    'district': district_info['district'],
+                    'confidence': district_info['confidence'],
+                    'coordinates': coords,
+                    'distance_km': district_info['distance_km']
+                })
+        
+        return results
+
+
+class DescriptionLocationExtractor:
+    """Leírásokból történő szemantikus lokáció kinyerés fejlett pattern matching-el"""
+    
+    def __init__(self):
+        # KORRIGÁLT kerületi rész --> utca mapping
+        self.corrected_street_mapping = {
+            'Krisztinaváros': [
+                'márvány', 'margitta', 'attila', 'krisztina', 'LogodiLogodi', 'tabán',
+                'naphegy', 'gellérthegy', 'várhegy', 'anjou', 'vérmező'
+            ],
+            'Svábhegy': [
+                'svábhegy', 'normafa', 'eötvös', 'cseppkő', 'beethoven', 
+                'költő', 'tóth árpád', 'kuruclesi', 'galvani'
+            ],
+            'Orbánhegy': [
+                'orbán', 'törökugrató', 'nagy', 'szilágyi dezső', 'fillér', 
+                'görög', 'maros', 'margit', 'toldy'
+            ],
+            'Virányos': [
+                'virányos', 'istenhegyi', 'alkotás', 'böszörményi', 
+                'csaba', 'németvölgyi', 'sas'
+            ],
+            'Rózsadomb': [
+                'rózsadomb', 'palatinus', 'apostol', 'törökvész', 'szerb',
+                'pasaréti', 'fellner', 'frankel leó'
+            ],
+            'Zugliget': [
+                'zugligeti', 'szépvölgyi', 'máriaremetei', 'hűvösvölgyi',
+                'zugliget', 'budakeszi', 'cseppkő'
+            ]
+        }
+        
+        # Kontextuális modifikátorok
+        self.context_modifiers = {
+            'premium': ['panoráma', 'kilátás', 'egyedi', 'exkluzív', 'prémium', 'luxus'],
+            'nature': ['erdő', 'park', 'természet', 'hegyi', 'csendes'],
+            'transport': ['metro', 'busz', 'villamos', 'közlekedés'],
+            'amenities': ['iskola', 'óvoda', 'bolt', 'pláza', 'orvos']
+        }
+    
+    def extract_locations_from_text(self, text):
+        """Szövegből lokáció pattern-ek kinyerése"""
+        if not text:
+            return []
+        
+        text = text.lower().strip()
+        found_locations = []
+        
+        # 1. Közvetlen kerületi rész említések
+        for district, keywords in self.corrected_street_mapping.items():
+            for keyword in keywords:
+                if keyword.lower() in text:
+                    # Kontextuális elemzés
+                    context_score = self._calculate_context_confidence(text)
+                    confidence = min(0.95, 0.7 + context_score)
+                    
+                    found_locations.append({
+                        'district': district,
+                        'confidence': confidence,
+                        'keyword': keyword,
+                        'context_score': context_score,
+                        'source': 'description'
+                    })
+        
+        return found_locations
+    
+    def _calculate_context_confidence(self, text):
+        """Kontextuális konfidencia számítás"""
+        confidence_boost = 0.0
+        
+        for category, keywords in self.context_modifiers.items():
+            matches = sum(1 for kw in keywords if kw in text)
+            if matches > 0:
+                confidence_boost += min(0.15, matches * 0.05)
+        
+        # Hosszabb leírás = magasabb konfidencia
+        length_boost = min(0.1, len(text) / 1000)
+        
+        return confidence_boost + length_boost
+    
+    def analyze_description(self, description):
+        """Teljes leírás elemzés eredmény aggregálással"""
+        locations = self.extract_locations_from_text(description)
+        
+        if not locations:
+            return {'district': 'Ismeretlen', 'confidence': 0.0, 'source': 'description'}
+        
+        # Legnagyobb konfidenciájú találat kiválasztása
+        best_location = max(locations, key=lambda x: x['confidence'])
+        
+        return {
+            'district': best_location['district'],
+            'confidence': best_location['confidence'],
+            'source': 'description',
+            'all_matches': len(locations),
+            'best_keyword': best_location['keyword']
+        }
+
+
+class EnhancedLocationCategorizer:
+    """4-lépéses hibrid lokáció kategorizálás hierarchikus fallback-kel"""
+    
+    def __init__(self, google_maps_api_key=None):
+        self.google_analyzer = GoogleMapsLocationAnalyzer(google_maps_api_key)
+        self.description_analyzer = DescriptionLocationExtractor()
+        
+        # Fallback címelemzés egyszerű pattern matching-el
+        self.address_patterns = {
+            'Krisztinaváros': ['krisztina', 'attila', 'logodi', 'tabán', 'márvány'],
+            'Svábhegy': ['svábhegy', 'normafa', 'eötvös', 'beethoven'],
+            'Orbánhegy': ['orbánhegy', 'szilágyi dezső', 'törökugrató'],
+            'Rózsadomb': ['rózsadomb', 'palatinus', 'törökvész', 'pasaréti'],
+            'Virányos': ['virányos', 'istenhegyi', 'alkotás'],
+            'Zugliget': ['zugliget', 'hűvösvölgy', 'máriaremete']
+        }
+    
+    def categorize_location(self, address="", description="", price=None):
+        """4-lépéses lokáció kategorizálás"""
+        results = []
+        
+        # 1. LÉPÉS: Google Maps koordináta-alapú elemzés
+        if address:
+            google_result = self.google_analyzer.analyze_location(address, description)
+            if google_result.get('confidence', 0) > 0.5:
+                results.append(google_result)
+        
+        # 2. LÉPÉS: Szemantikus leírás elemzés
+        if description:
+            desc_result = self.description_analyzer.analyze_description(description)
+            if desc_result.get('confidence', 0) > 0.4:
+                results.append(desc_result)
+        
+        # 3. LÉPÉS: Egyszerű cím pattern matching (fallback)
+        if address:
+            addr_result = self._simple_address_match(address)
+            if addr_result.get('confidence', 0) > 0.3:
+                results.append(addr_result)
+        
+        # 4. LÉPÉS: Eredmény aggregálás és végső döntés
+        final_result = self._aggregate_results(results, price)
+        
+        return final_result
+    
+    def _simple_address_match(self, address):
+        """Egyszerű cím pattern matching fallback módszer"""
+        address_lower = address.lower()
+        
+        for district, patterns in self.address_patterns.items():
+            for pattern in patterns:
+                if pattern in address_lower:
+                    return {
+                        'district': district,
+                        'confidence': 0.4,
+                        'source': 'address_pattern',
+                        'matched_pattern': pattern
+                    }
+        
+        return {'district': 'Ismeretlen', 'confidence': 0.0, 'source': 'address_pattern'}
+    
+    def _aggregate_results(self, results, price=None):
+        """Többszörös eredmény aggregálás súlyozott átlaggal + koordináták megőrzése"""
+        if not results:
+            return {'district': 'Ismeretlen', 'confidence': 0.0, 'source': 'none', 'method': 'fallback'}
+        
+        # District-konfidencia párok gyűjtése + koordináták keresése
+        district_scores = defaultdict(list)
+        best_coordinates = None
+        
+        for result in results:
+            district = result.get('district', 'Ismeretlen')
+            confidence = result.get('confidence', 0.0)
+            source = result.get('source', 'unknown')
+            
+            # 🌍 KOORDINÁTÁK MEGŐRZÉSE - elsőbbség a Google Maps-nek
+            if source == 'google_maps' and result.get('coordinates'):
+                best_coordinates = result['coordinates']
+            elif not best_coordinates and result.get('coordinates'):
+                best_coordinates = result['coordinates']
+            
+            # Forrás típus súlyozás
+            source_weight = {
+                'google_maps': 1.0,      # Legmegbízhatóbb
+                'description': 0.8,      # Jó
+                'address_pattern': 0.6   # Fallback
+            }.get(source, 0.5)
+            
+            weighted_confidence = confidence * source_weight
+            district_scores[district].append(weighted_confidence)
+        
+        # Legjobb district kiválasztása
+        best_district = 'Ismeretlen'
+        best_confidence = 0.0
+        
+        for district, confidences in district_scores.items():
+            # Súlyozott átlag számítás
+            avg_confidence = sum(confidences) / len(confidences)
+            
+            if avg_confidence > best_confidence:
+                best_confidence = avg_confidence
+                best_district = district
+        
+        # Ár-alapú konfidencia finomhangolás
+        if price and best_confidence > 0.3:
+            price_modifier = self._get_price_confidence_modifier(best_district, price)
+            best_confidence = min(0.98, best_confidence * price_modifier)
+        
+        # 🌍 JAVÍTOTT VISSZATÉRÉS - koordinátákkal
+        result = {
+            'district': best_district,
+            'confidence': round(best_confidence, 3),
+            'source': f"aggregated_from_{len(results)}_sources",
+            'method': 'enhanced_4step',
+            'total_analyses': len(results)
+        }
+        
+        # Koordináták hozzáadása ha vannak
+        if best_coordinates:
+            result['coordinates'] = best_coordinates
+        
+        return result
+    
+    def _get_price_confidence_modifier(self, district, price):
+        """Ár-alapú konfidencia módosítás (logikus ár-lokáció párosítás)"""
+        try:
+            price_num = float(re.sub(r'[^\d]', '', str(price)))
+        except:
+            return 1.0
+        
+        # Kerületi részek tipikus árszintjei (millió Ft)
+        typical_price_ranges = {
+            'Rózsadomb': (150, 800),
+            'Krisztinaváros': (100, 600), 
+            'Svábhegy': (120, 500),
+            'Zugliget': (80, 400),
+            'Virányos': (90, 450),
+            'Orbánhegy': (70, 350)
+        }
+        
+        if district in typical_price_ranges:
+            min_price, max_price = typical_price_ranges[district]
+            
+            if min_price <= price_num <= max_price:
+                return 1.1  # Logikus ár -> konfidencia növelés
+            elif price_num < min_price * 0.7 or price_num > max_price * 1.5:
+                return 0.8  # Szokatlan ár -> konfidencia csökkentés
+        
+        return 1.0  # Semleges
+
+
+# ==== VÉGESLENYULT ENHANCED LOKÁCIÓ RENDSZER ====
+
 class IngatlanSzovegelemzo:
     """
-    Beépített szöveganalízis modul - Enhanced feature-k generálása
+    Beépített szöveganalízis modul - Enhanced feature-k generálása + LOKÁCIÓ ANALÍZIS
     """
-    def __init__(self):
-        """Inicializálja a kategóriákat és kulcsszavakat"""
+    def __init__(self, google_maps_api_key=None):
+        """Inicializálja a kategóriákat és kulcsszavakat + Enhanced Lokáció Rendszer"""
+        
+        # 🗺️ ENHANCED LOKÁCIÓ KATEGORIZÁLÓ INICIALIZÁLÁSA
+        self.location_categorizer = EnhancedLocationCategorizer(google_maps_api_key)
+        print("✅ Enhanced lokáció kategorizáló inicializálva")
         
         # 🔥 MODERN ÁRFELHAJTÓ KATEGÓRIÁK - 2025 INGATLANPIACI TRENDEK
         self.kategoriak = {
@@ -183,6 +531,53 @@ class IngatlanSzovegelemzo:
             }
         
         return scores, details
+
+    def enhanced_location_analysis(self, address="", description="", price=None):
+        """
+        🗺️ ENHANCED LOKÁCIÓ ELEMZÉS - 4-lépéses hibrid rendszer
+        """
+        try:
+            location_result = self.location_categorizer.categorize_location(
+                address=address, 
+                description=description, 
+                price=price
+            )
+            
+            # Eredmény formázás + koordináták kinyerése
+            result = {
+                'keruleti_resz': location_result.get('district', 'Ismeretlen'),
+                'konfidencia': location_result.get('confidence', 0.0),
+                'elemzesi_modszer': location_result.get('method', 'unknown'),
+                'forras': location_result.get('source', 'none'),
+                'elemzesek_szama': location_result.get('total_analyses', 0),
+                
+                # 🌍 Koordináták hozzáadása
+                'coordinates': location_result.get('coordinates', None),
+                'latitude': None,
+                'longitude': None,
+                'geocoded_address': ''
+            }
+            
+            # Koordináták szétbontása
+            if result['coordinates']:
+                result['latitude'] = result['coordinates'][0]
+                result['longitude'] = result['coordinates'][1]
+                result['geocoded_address'] = address
+                
+            return result
+        except Exception as e:
+            print(f"⚠️ Enhanced lokáció elemzés hiba: {e}")
+            return {
+                'keruleti_resz': 'Ismeretlen',
+                'konfidencia': 0.0,
+                'elemzesi_modszer': 'error',
+                'forras': 'fallback',
+                'elemzesek_szama': 0,
+                'coordinates': None,
+                'latitude': None,
+                'longitude': None,
+                'geocoded_address': ''
+            }
 
 class KomplettIngatlanPipeline:
     def __init__(self):
@@ -480,9 +875,7 @@ class KomplettIngatlanPipeline:
             
             if success:
                 print(f"\n✅ DASHBOARD GENERÁLÁS SIKERES!")
-                print(f"📁 Dashboard fájl: {self.dashboard_file}")
-                print(f"\n🚀 DASHBOARD AUTOMATIKUS INDÍTÁSA...")
-                
+                print(f"📁 Dashboard fájl: {self.dashboard_file}")               
                 # Streamlit dashboard automatikus indítása
                 try:
                     # Egyedi port keresése (8501-től kezdve)
@@ -497,11 +890,6 @@ class KomplettIngatlanPipeline:
                         '--server.port', str(port),
                         '--server.headless', 'true'
                     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    
-                    print(f"✅ Dashboard elindítva!")
-                    print(f"🔗 Elérés: http://localhost:{port}")
-                    print(f"📊 Process ID: {process.pid}")
-                    print(f"\n💡 A dashboard fut a háttérben. Leállítás: Ctrl+C vagy process kill")
                     
                 except Exception as e:
                     print(f"⚠️ Dashboard automatikus indítás sikertelen: {e}")
@@ -771,17 +1159,6 @@ class KomplettIngatlanPipeline:
         print(f"   📊 Lista CSV: {self.list_csv_file}")
         print(f"   🔍 Részletes CSV: {self.details_csv_file}")
         print(f"   🎨 Dashboard: {self.dashboard_file}")
-        
-        # Statisztikák
-        try:
-            if os.path.exists(self.details_csv_file):
-                df = pd.read_csv(self.details_csv_file)
-                print(f"\n📈 STATISZTIKÁK:")
-                print(f"   📍 Összesen: {len(df)} ingatlan")
-                print(f"   🏠 Átlag ár: {df['Ár (Ft)'].mean():,.0f} Ft")
-                print(f"   📏 Átlag alapterület: {df['Alapterület (m²)'].mean():,.0f} m²")
-        except:
-            pass
 
 # URL-alapú lista scraper
 class UrlListScraper:
@@ -1432,9 +1809,12 @@ class DetailedScraper:
                 if field not in details:
                     details[field] = ""
             
-            # Javított logolás - additional_fields lista, nem dictionary
-            filled_fields = [field for field in additional_fields if details.get(field, "")]
-            print(f"  ✅ Kinyert mezők: {len(filled_fields)}/{len(additional_fields)}")
+            # Javított logolás - ÖSSZES kinyert mező számlálása
+            all_fields = ['reszletes_cim', 'reszletes_ar', 'epitesi_ev', 'szint', 'ingatlan_allapota', 
+                         'futes', 'erkely', 'parkolas', 'energetikai', 'leiras', 'ingatlanos', 
+                         'telefon', 'hirdeto_tipus'] + additional_fields
+            filled_fields = [field for field in all_fields if details.get(field, "")]
+            print(f"  ✅ Kinyert mezők: {len(filled_fields)}/{len(all_fields)}")
             return details
             
         except Exception as e:
@@ -1584,23 +1964,89 @@ class DetailedScraper:
         return "bizonytalan"
     
     def _categorize_district(self, cim, reszletes_cim, leiras, location_name=""):
-        """Dinamikus városrész kategorizálás lokáció alapján"""
+        """Dinamikus városrész kategorizálás lokáció alapján - CÍM SPECIFIKUS ELEMZÉSSEL"""
         
         # Egyesített szöveg elemzéshez
         teljes_szoveg = f"{cim} {reszletes_cim} {leiras}".lower()
         
-        # LOKÁCIÓ ALAPÚ VÁROSRÉSZ MEGHATÁROZÁS
-        if 'budaors' in location_name.lower():
+        # 🎯 CÍM ALAPÚ SPECIFIKUS VÁROSRÉSZ FELISMERÉS
+        if 'kőbánya' in teljes_szoveg or 'kobanya' in teljes_szoveg or 'x. kerület' in teljes_szoveg:
+            return self._categorize_kobanya_district(cim, reszletes_cim, leiras)
+        elif 'törökbálint' in teljes_szoveg or 'torokbalint' in teljes_szoveg:
+            return self._categorize_torokbalint_district(cim, reszletes_cim, leiras)
+        elif 'budaörs' in teljes_szoveg or 'budaors' in teljes_szoveg:
             return self._categorize_budaors_district(cim, reszletes_cim, leiras)
-        elif 'xii_ker' in location_name.lower() or 'xii-ker' in location_name.lower():
+        elif 'xii' in teljes_szoveg or 'xii.' in cim:
             return self._categorize_budapest_xii_district(cim, reszletes_cim, leiras)
-        elif 'budapest' in location_name.lower():
+        elif any(word in teljes_szoveg for word in ['budapest', 'pest', 'buda']):
             return self._categorize_budapest_general_district(cim, reszletes_cim, leiras)
-        elif 'erd' in location_name.lower():
+        elif 'érd' in teljes_szoveg:
             return self._categorize_erd_district(cim, reszletes_cim, leiras)
         else:
             # ÁLTALÁNOS KATEGORIZÁLÁS - LOKÁCIÓ FÜGGETLEN
             return self._categorize_general_district(cim, reszletes_cim, leiras)
+
+    def _categorize_kobanya_district(self, cim, reszletes_cim, leiras):
+        """Kőbánya X. kerület specifikus városrész kategorizálás"""
+        
+        # Egyesített szöveg elemzéshez
+        teljes_szoveg = f"{cim} {reszletes_cim} {leiras}".lower()
+        
+        # KŐBÁNYA X. KERÜLET VÁROSRÉSZEK
+        varosreszek = {
+            'Kőbánya-Újhegyi lakótelep': {
+                'kulcsszavak': ['újhegy', 'újhegyi', 'lakótelep', 'panelház', 'panel',
+                               'tóvirág', 'mélytó', 'szövőszék', 'oltó', 'kővágó',
+                               'dombtető', 'gőzmozdony', 'harmat', 'bányató'],
+                'premium_szorzo': 1.0,
+                'leiras': 'Kőbánya-Újhegyi lakótelep, paneles lakónegyed'
+            },
+            
+            'Kőbánya központ': {
+                'kulcsszavak': ['központ', 'belváros', 'főút', 'közlekedés',
+                               'bevásárlóközpont', 'szolgáltatás'],
+                'premium_szorzo': 0.95,
+                'leiras': 'Kőbánya központi területe'
+            },
+            
+            'Kőbánya egyéb terület': {
+                'kulcsszavak': ['kőbánya', 'kobanya', 'x. kerület'],
+                'premium_szorzo': 0.9,
+                'leiras': 'Kőbánya egyéb területei'
+            }
+        }
+        
+        return self._find_best_district_match(varosreszek, teljes_szoveg, 'Kőbánya-Újhegyi lakótelep')
+
+    def _categorize_torokbalint_district(self, cim, reszletes_cim, leiras):
+        """Törökbálint specifikus városrész kategorizálás"""
+        
+        # Egyesített szöveg elemzéshez
+        teljes_szoveg = f"{cim} {reszletes_cim} {leiras}".lower()
+        
+        # TÖRÖKBÁLINT VÁROSRÉSZEK
+        varosreszek = {
+            'Törökbálint-Tükörhegy': {
+                'kulcsszavak': ['tükörhegy', 'tukorhegy', 'hegy', 'panoráma', 'kilátás',
+                               'családi ház', 'villa', 'nagy telek', 'természet'],
+                'premium_szorzo': 1.2,
+                'leiras': 'Törökbálint-Tükörhegy, családi házas negyed'
+            },
+            
+            'Törökbálint központ': {
+                'kulcsszavak': ['központ', 'főút', 'szolgáltatás', 'bevásárlóközpont'],
+                'premium_szorzo': 1.0,
+                'leiras': 'Törökbálint központi területe'
+            },
+            
+            'Törökbálint lakópark': {
+                'kulcsszavak': ['lakópark', 'új építés', 'modern', 'fejlesztés'],
+                'premium_szorzo': 1.1,
+                'leiras': 'Törökbálinti új lakóparkok'
+            }
+        }
+        
+        return self._find_best_district_match(varosreszek, teljes_szoveg, 'Törökbálint központ')
 
     def _categorize_budapest_xii_district(self, cim, reszletes_cim, leiras):
         """Budapest XII. kerület városrész kategorizálás"""
@@ -1949,13 +2395,20 @@ class DetailedScraper:
             print(f"💾 Alap CSV mentve (| elválasztó): {base_filename}")
             print(f"📊 Végső rekordszám: {len(df)}")
             
-            # 🌟 ENHANCED TEXT FEATURES GENERÁLÁS
-            print(f"� Enhanced text feature-k generálása...")
+            # 🌟 ENHANCED TEXT FEATURES + LOKÁCIÓ GENERÁLÁS
+            print(f"🔍 Enhanced text feature-k + lokáció elemzés...")
             
-            # Szövegelemző inicializálása
-            analyzer = IngatlanSzovegelemzo()
+            # Szövegelemző inicializálása GOOGLE MAPS API-VAL
+            # Ha van GOOGLE_MAPS_API_KEY environment változó, használja
+            google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', None)
+            analyzer = IngatlanSzovegelemzo(google_maps_api_key=google_api_key)
             
-            # Új oszlopok inicializálása - MODERN ÁRFELHAJTÓ KATEGÓRIÁK (2025)
+            if google_api_key:
+                print("🗺️ Google Maps API használatával - ENHANCED lokáció elemzés")
+            else:
+                print("⚠️ Google Maps API key nincs beállítva - fallback lokáció elemzés")
+            
+            # Új oszlopok inicializálása - MODERN ÁRFELHAJTÓ KATEGÓRIÁK (2025) + ENHANCED LOKÁCIÓ
             text_feature_columns = {
                 # Pontszám oszlopok - ÚJ MODERN KATEGÓRIÁK
                 'zold_energia_premium_pont': 0.0,
@@ -1982,12 +2435,25 @@ class DetailedScraper:
                 'ossz_negativ_pont': 0.0,
                 'netto_szoveg_pont': 0.0,
                 
-                # VÁROSRÉSZ KATEGORIZÁLÁS - BUDAÖRS SPECIFIKUS
+                # 🗺️ ENHANCED LOKÁCIÓ OSZLOPOK - XII. KERÜLETI RÉSZEK + KOORDINÁTÁK
+                'enhanced_keruleti_resz': 'Ismeretlen',
+                'lokacio_konfidencia': 0.0,
+                'lokacio_elemzesi_modszer': 'none',
+                'lokacio_forras': 'none',
+                'lokacio_elemzesek_szama': 0,
+                
+                # 🌍 GEOLOKÁCIÓS KOORDINÁTÁK
+                'geo_latitude': None,
+                'geo_longitude': None,
+                'geo_address_from_api': '',
+                
+                # VÁROSRÉSZ KATEGORIZÁLÁS - BUDAÖRS SPECIFIKUS (régi, kompatibilitás miatt)
                 'varosresz_kategoria': 'Ismeretlen',
                 'varosresz_premium_szorzo': 1.0
             }
             
-            # Oszlopok hozzáadása
+            # Oszlopok hozzáadása - SettingWithCopyWarning elkerülése
+            df = df.copy()  # Explicit másolat készítése
             for col_name, default_value in text_feature_columns.items():
                 df[col_name] = default_value
             
@@ -2018,7 +2484,25 @@ class DetailedScraper:
                     df.at[idx, 'van_build_quality'] = 1 if scores.get('BUILD_QUALITY', 0) > 0 else 0
                     df.at[idx, 'van_negativ_elem'] = 1 if scores.get('NEGATIV_TENYEZOK', 0) < 0 else 0
                     
-                    # VÁROSRÉSZ KATEGORIZÁLÁS - DINAMIKUS LOKÁCIÓ ALAPJÁN
+                    # 🗺️ ENHANCED LOKÁCIÓ ELEMZÉS - ÚJ 4-lépéses rendszer
+                    enhanced_location = analyzer.enhanced_location_analysis(
+                        address=str(row.get('cim', '')),
+                        description=str(row.get('leiras', '')),
+                        price=row.get('ar', None)
+                    )
+                    
+                    df.at[idx, 'enhanced_keruleti_resz'] = enhanced_location['keruleti_resz']
+                    df.at[idx, 'lokacio_konfidencia'] = enhanced_location['konfidencia']
+                    df.at[idx, 'lokacio_elemzesi_modszer'] = enhanced_location['elemzesi_modszer']
+                    df.at[idx, 'lokacio_forras'] = enhanced_location['forras']
+                    df.at[idx, 'lokacio_elemzesek_szama'] = enhanced_location['elemzesek_szama']
+                    
+                    # 🌍 GEOLOKÁCIÓS KOORDINÁTÁK MENTÉSE
+                    df.at[idx, 'geo_latitude'] = enhanced_location.get('latitude', None)
+                    df.at[idx, 'geo_longitude'] = enhanced_location.get('longitude', None)
+                    df.at[idx, 'geo_address_from_api'] = enhanced_location.get('geocoded_address', '')
+                    
+                    # VÁROSRÉSZ KATEGORIZÁLÁS - DINAMIKUS LOKÁCIÓ ALAPJÁN (régi rendszer, kompatibilitás)
                     varosresz_info = self._categorize_district(str(row.get('cim', '')), str(row.get('reszletes_cim', '')), str(row.get('leiras', '')), self.location_name)
                     df.at[idx, 'varosresz_kategoria'] = varosresz_info['kategoria']
                     df.at[idx, 'varosresz_premium_szorzo'] = varosresz_info['premium_szorzo']

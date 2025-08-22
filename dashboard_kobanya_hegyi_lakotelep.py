@@ -5,17 +5,17 @@ STREAMLIT DASHBOARD TEMPLATE - INGATLAN ELEMZÉS
 🎯 HASZNÁLAT:
 1. Másold le ezt a template fájlt új névvel (pl. dashboard_location.py)
 2. Cseréld le a TEMPLATE placeholder-eket:
-   - {{LOCATION_NAME}} -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
-   - {{CSV_PATTERN_1}}, {{CSV_PATTERN_2}}, {{CSV_PATTERN_3}} -> konkrét CSV pattern-ek
+   - KOBANYA HEGYI LAKOTELEP -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
+   - ingatlan_reszletes_*kobanya_hegyi_lakotelep*.csv, ingatlan_modern_enhanced_kobanya_hegyi_lakotelep_*.csv, ingatlan_*kobanya_hegyi_lakotelep*.csv -> konkrét CSV pattern-ek
 
 📋 PÉLDA CSERÉK:
 - Törökbálint-Tükörhegy esetén:
-  {{LOCATION_NAME}} -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
-  {{CSV_PATTERN_1}} -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+  KOBANYA HEGYI LAKOTELEP -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
+  ingatlan_reszletes_*kobanya_hegyi_lakotelep*.csv -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
   
 - XII. kerület esetén:
-  {{LOCATION_NAME}} -> "XII. KERÜLET" 
-  {{CSV_PATTERN_1}} -> "ingatlan_reszletes_*xii_ker*.csv"
+  KOBANYA HEGYI LAKOTELEP -> "XII. KERÜLET" 
+  ingatlan_reszletes_*kobanya_hegyi_lakotelep*.csv -> "ingatlan_reszletes_*xii_ker*.csv"
 
 ⚡ Fix lokáció + dinamikus időbélyeg = deployment stable + auto-update!
 """
@@ -30,15 +30,13 @@ import os
 from datetime import datetime
 import glob
 import warnings
-import folium
-from streamlit_folium import st_folium
 warnings.filterwarnings('ignore')
 
 # TEMPLATE PLACEHOLDER - Location név és CSV pattern
 # Ezt a részt kell módosítani egyedi dashboard generálásnál
 def get_location_from_filename():
     """Fix location név visszaadása - ezt módosítani kell egyedi dashboard-oknál"""
-    return "{{LOCATION_NAME}}"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
+    return "KOBANYA HEGYI LAKOTELEP"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
 
 location_name = get_location_from_filename()
 timestamp = datetime.now().strftime("%Y.%m.%d %H:%M")
@@ -57,9 +55,9 @@ def load_and_process_data():
         # TEMPLATE PLACEHOLDER - CSV lokáció pattern
         # Ezt a részt kell módosítani egyedi dashboard generálásnál
         location_patterns = [
-            "{{CSV_PATTERN_1}}",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
-            "{{CSV_PATTERN_2}}",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
-            "{{CSV_PATTERN_3}}"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
+            "ingatlan_reszletes_*kobanya_hegyi_lakotelep*.csv",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+            "ingatlan_modern_enhanced_kobanya_hegyi_lakotelep_*.csv",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
+            "ingatlan_*kobanya_hegyi_lakotelep*.csv"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
         ]
         
         # Fix lokáció pattern keresés - mindig a legfrissebb CSV-t választja
@@ -393,9 +391,8 @@ def main():
                 st.write(f"**🏊 Wellness:** {'✅' if row.get('van_wellness_luxury', False) else '❌'}")
                 st.write(f"**🏠 Smart tech:** {'✅' if row.get('van_smart_tech', False) else '❌'}")
                 st.write(f"**💎 Premium design:** {'✅' if row.get('van_premium_design', False) else '❌'}")
-
-    # 🗺️ INTERAKTÍV TÉRKÉP - szűrt adatokkal
-    create_interactive_map(filtered_df, location_name)
+                if 'varosresz_kategoria' in row:
+                    st.write(f"**🏘️ Városrész:** {row.get('varosresz_kategoria', 'N/A')}")
     
     # Vizualizációk
     st.header("📊 Vizualizációk")
@@ -593,6 +590,17 @@ def main():
         )
         st.plotly_chart(fig3, use_container_width=True)
     
+    # Városrész elemzés
+    if 'varosresz_kategoria' in filtered_df.columns:
+        district_counts = filtered_df['varosresz_kategoria'].value_counts()
+        
+        fig4 = px.pie(
+            values=district_counts.values,
+            names=district_counts.index,
+            title="Ingatlanok Megoszlása Városrészek Szerint"
+        )
+        st.plotly_chart(fig4, use_container_width=True)
+    
     # Statisztikai összefoglaló táblázat
     st.header("📊 Statisztikai Összefoglaló")
     
@@ -654,6 +662,19 @@ def main():
                 'Átlag Családbarát Pont': round(filtered_df[filtered_df['ingatlan_allapota'] == condition]['csaladbarati_pontszam'].mean(), 1)
             })
     
+    # Városrész elemzés
+    if 'varosresz_kategoria' in filtered_df.columns:
+        district_stats = filtered_df['varosresz_kategoria'].value_counts()
+        for district, count in district_stats.head(5).items():
+            categorical_cols.append('Városrész')
+            categorical_data.append({
+                'Kategória': district,
+                'Darabszám': count,
+                'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                'Átlag Ár (M Ft)': round(filtered_df[filtered_df['varosresz_kategoria'] == district]['teljes_ar_millió'].mean(), 1),
+                'Átlag Családbarát Pont': round(filtered_df[filtered_df['varosresz_kategoria'] == district]['csaladbarati_pontszam'].mean(), 1)
+            })
+    
     # Modern funkciók elemzése
     modern_features = ['van_zold_energia', 'van_wellness_luxury', 'van_smart_tech', 'van_premium_design']
     feature_names = ['🌞 Zöld Energia', '🏊 Wellness & Luxury', '🏠 Smart Technology', '💎 Premium Design']
@@ -681,7 +702,8 @@ def main():
     st.markdown("**Minden szűrt ingatlan részletei kattintható linkekkel:**")
     
     display_columns = [
-        'cim', 'teljes_ar', 'terulet', 'szobak', 'ingatlan_allapota', 'csaladbarati_pontszam', 'modern_netto_pont', 'link'
+        'cim', 'teljes_ar', 'terulet', 'szobak', 'ingatlan_allapota', 
+        'varosresz_kategoria', 'csaladbarati_pontszam', 'modern_netto_pont', 'link'  # HOZZÁADVA: link
     ]
     
     available_columns = [col for col in display_columns if col in filtered_df.columns]
@@ -717,7 +739,9 @@ def main():
             'Családbarát Pont': f"{row.get('csaladbarati_pontszam', 0):.1f}"
         }
         
-        # Modern pont hozzáadása, ha létezik
+        # Opcionális oszlopok
+        if 'varosresz_kategoria' in row.index and pd.notna(row['varosresz_kategoria']):
+            row_data['Városrész'] = row['varosresz_kategoria']
         if 'modern_netto_pont' in row.index and pd.notna(row['modern_netto_pont']):
             row_data['Modern Pont'] = f"{row['modern_netto_pont']:.1f}"
             
@@ -769,142 +793,6 @@ def main():
     st.markdown("- 150+ m² és 4+ szoba ideális nagyobb családok számára")  
     st.markdown("- A modern pontszám további kényelmi és technológiai elemeket értékel")
     st.markdown("- Az adatok 2025.08.21-i állapot szerint frissültek")
-
-def create_interactive_map(df, location_name):
-    """🗺️ INTERAKTÍV TÉRKÉP - GPS koordináták alapján"""
-    
-    # Koordináta oszlopok ellenőrzése
-    has_coordinates = all(col in df.columns for col in ['geo_latitude', 'geo_longitude'])
-    
-    if not has_coordinates:
-        st.warning("🗺️ Térképes megjelenítés nem elérhető - nincs GPS koordináta az adatokban")
-        return
-    
-    # Koordinátákkal rendelkező rekordok szűrése
-    map_df = df.dropna(subset=['geo_latitude', 'geo_longitude']).copy()
-    
-    if map_df.empty:
-        st.warning("🗺️ Térképes megjelenítés nem elérhető - nincs GPS adat a rekordokban")
-        return
-    
-    st.markdown("---")
-    st.markdown("## 🗺️ **INTERAKTÍV TÉRKÉP**")
-    st.markdown(f"**📍 Lokáció:** {location_name} | **🏠 Ingatlanok:** {len(map_df)} db GPS koordinátával")
-    
-    # Térkép alapbeállítások
-    center_lat = map_df['geo_latitude'].mean()
-    center_lng = map_df['geo_longitude'].mean()
-    
-    # Folium térkép létrehozása
-    m = folium.Map(
-        location=[center_lat, center_lng],
-        zoom_start=12,
-        tiles='OpenStreetMap'
-    )
-    
-    # Színkódolás ár szerint
-    def get_price_color(price):
-        """Ár alapú színkódolás"""
-        if pd.isna(price):
-            return '#95A5A6'  # Szürke, ha nincs ár
-        elif price <= 100:
-            return '#2ECC71'  # Zöld - olcsó
-        elif price <= 200:
-            return '#F39C12'  # Narancs - közepes
-        elif price <= 300:
-            return '#E74C3C'  # Piros - drága  
-        else:
-            return '#8E44AD'  # Lila - nagyon drága
-    
-    # Enhanced lokáció oszlop meghatározása (már nem használjuk színkódolásra)
-    district_col = 'enhanced_keruleti_resz' if 'enhanced_keruleti_resz' in map_df.columns else 'varosresz_kategoria'
-    
-    # Markerek hozzáadása
-    for idx, row in map_df.iterrows():
-        try:
-            # Ingatlan adatok
-            lat = float(row['geo_latitude'])
-            lng = float(row['geo_longitude'])
-            cim = row.get('cim', 'N/A')[:50]
-            ar = row.get('teljes_ar', 'N/A')
-            terulet = row.get('terulet', 'N/A')
-            allapot = row.get('ingatlan_allapota', 'N/A')
-            url = row.get('link', '#')
-            
-            # Nettó pontszám (Enhanced AI feature)
-            netto_pont = row.get('netto_szoveg_pont', 0)
-            
-            # Színkód meghatározása ár szerint
-            price_value = row.get('teljes_ar_millió', None)
-            color = get_price_color(price_value)
-            
-            # Tooltip HTML tartalma
-            tooltip_html = f"""
-            <div style='width: 250px; font-family: Arial;'>
-                <h4 style='margin: 0; color: #2E86AB;'>🏠 {cim}</h4>
-                <hr style='margin: 5px 0;'>
-                <p style='margin: 2px 0;'><b>💰 Ár:</b> {ar}</p>
-                <p style='margin: 2px 0;'><b>📐 Terület:</b> {terulet}</p>
-                <p style='margin: 2px 0;'><b>🏗️ Állapot:</b> {allapot}</p>
-                <p style='margin: 2px 0;'><b>⭐ AI Pontszám:</b> {netto_pont:.1f}</p>
-                <p style='margin: 5px 0;'><a href='{url}' target='_blank' style='color: #2E86AB;'>🔗 Részletek</a></p>
-            </div>
-            """
-            
-            # Marker hozzáadása
-            folium.CircleMarker(
-                location=[lat, lng],
-                radius=8,
-                popup=folium.Popup(tooltip_html, max_width=300),
-                tooltip=f"{cim} - {ar}",
-                color='white',
-                weight=2,
-                fillColor=color,
-                fillOpacity=0.8
-            ).add_to(m)
-            
-        except Exception as e:
-            st.warning(f"Marker hiba: {e}")
-            continue
-    
-    # Legenda hozzáadása - ár alapú színkódolás
-    legend_html = f"""
-    <div style='position: fixed; 
-                top: 10px; right: 10px; width: 180px; height: auto; 
-                background-color: white; border:2px solid grey; z-index:9999; 
-                font-size:12px; padding: 10px'>
-    <h4 style='margin-top:0;'>� Árszínkódolás</h4>
-    <p style='margin: 3px 0;'>
-        <span style='color:#2ECC71; font-size: 16px;'>●</span> 
-        ≤100 M Ft: olcsó
-    </p>
-    <p style='margin: 3px 0;'>
-        <span style='color:#F39C12; font-size: 16px;'>●</span> 
-        101-200 M Ft: közepes
-    </p>
-    <p style='margin: 3px 0;'>
-        <span style='color:#E74C3C; font-size: 16px;'>●</span> 
-        201-300 M Ft: drága
-    </p>
-    <p style='margin: 3px 0;'>
-        <span style='color:#8E44AD; font-size: 16px;'>●</span> 
-        300+ M Ft: nagyon drága
-    </p>
-    <p style='margin: 3px 0;'>
-        <span style='color:#95A5A6; font-size: 16px;'>●</span> 
-        Nincs ár adat
-    </p>
-    <hr style='margin: 8px 0;'>
-    <p style='margin: 3px 0; font-size: 10px;'>
-        🔗 Kattints a markerekre<br/>részletes információkért
-    </p>
-    </div>
-    """
-    
-    m.get_root().html.add_child(folium.Element(legend_html))
-    
-    # Térkép megjelenítése Streamlit-ben
-    st_folium(m, width=900, height=500, key=f"map_{location_name.lower().replace(' ', '_')}")
 
 if __name__ == "__main__":
     main()
