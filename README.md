@@ -2,7 +2,7 @@
 
 ## ⚠️ Jogi Nyilatkozat
 
-\*\*Ez egy személyes, hobbi projekt, amely kizárólag saját ingatlankeresési célokat szolgál. A projekt nem kereskedelmi célú, nem szolgál semmilyen üzleti vagy kereskedelmi tevékenységet.
+Ez egy személyes, hobbi projekt, amely kizárólag saját ingatlankeresési célokat szolgál. A projekt nem kereskedelmi célú, nem szolgál semmilyen üzleti vagy kereskedelmi tevékenységet.
 
 ## 📊 Projekt Áttekintés
 
