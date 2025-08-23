@@ -318,7 +318,7 @@ Ez egy személyes projekt, de javaslatokat, bug reportokat szívesen fogadok:
 
 ## 📝 Licenc
 
-Ez egy személyes, oktatási célú projekt. A kód szabadon használható személyes, nem kereskedelmi célokra.
+Ez egy személyes projekt, a kód csak a létrehozó engedélyével használható. Kereskedelmi célokra semmilyen esetben sem használható!
 
 ## 📞 Kapcsolat
 
