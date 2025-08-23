@@ -38,7 +38,7 @@ warnings.filterwarnings('ignore')
 # Ezt a részt kell módosítani egyedi dashboard generálásnál
 def get_location_from_filename():
     """Fix location név visszaadása - ezt módosítani kell egyedi dashboard-oknál"""
-    return "{{LOCATION_NAME}}"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
+    return "XI. KERÜLET"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
 
 location_name = get_location_from_filename()
 timestamp = datetime.now().strftime("%Y.%m.%d %H:%M")
@@ -57,9 +57,9 @@ def load_and_process_data():
         # TEMPLATE PLACEHOLDER - CSV lokáció pattern
         # Ezt a részt kell módosítani egyedi dashboard generálásnál
         location_patterns = [
-            "{{CSV_PATTERN_1}}",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
-            "{{CSV_PATTERN_2}}",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
-            "{{CSV_PATTERN_3}}"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
+            "ingatlan_reszletes_xi_ker_*.csv",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+            "ingatlan_modern_enhanced_xi_ker_*.csv",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
+            "ingatlan_reszletes_*xi_ker*.csv"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
         ]
         
         # Fix lokáció pattern keresés - mindig a legfrissebb CSV-t választja
@@ -362,7 +362,7 @@ def main():
         valid_data = filtered_df.dropna(subset=['teljes_ar_millió', 'terulet_szam'])
         if not valid_data.empty:
             avg_price_per_sqm = (valid_data['teljes_ar_millió'] * 1000000 / valid_data['terulet_szam']).mean()
-            st.metric("� Átlagos m² ár", f"{avg_price_per_sqm:,.0f} Ft/m²")
+            st.metric("💰 Átlagos m² ár", f"{avg_price_per_sqm:,.0f} Ft/m²")
         else:
             st.metric("💰 Átlagos m² ár", "N/A")
 
@@ -371,7 +371,19 @@ def main():
     
     # Vizualizációk
     st.header("📊 Vizualizációk")
-        
+    
+    # Ár vs Terület scatter plot családbarát pontszám szerint
+    fig1 = px.scatter(
+        filtered_df, 
+        x='terulet_szam', 
+        y='teljes_ar_millió',
+        color='csaladbarati_pontszam',
+        hover_data=['cim', 'ingatlan_allapota'],
+        title="Ár vs Terület (színkód: családbarát pontszám)",
+        labels={'terulet_szam': 'Terület (m²)', 'teljes_ar_millió': 'Ár (M Ft)'}
+    )
+    st.plotly_chart(fig1, use_container_width=True)
+    
     # Scatter Plot Elemzés
     st.subheader("📈 Ár vs. Egyéb Változók Elemzése")
     
@@ -1025,7 +1037,7 @@ def create_interactive_map(df, location_name):
                 top: 10px; right: 10px; width: 180px; height: auto; 
                 background-color: rgba(40, 40, 40, 0.9); border:2px solid #666; z-index:9999; 
                 font-size:12px; padding: 10px; color: white;'>
-    <h4 style='margin-top:0; color: white;'>� Árszínkódolás</h4>
+    <h4 style='margin-top:0; color: white;'>💰 Árszínkódolás</h4>
     <p style='margin: 3px 0;'>
         <span style='color:#2ECC71; font-size: 16px;'>●</span> 
         ≤100 M Ft: olcsó

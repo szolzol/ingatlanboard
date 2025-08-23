@@ -745,8 +745,9 @@ class KomplettIngatlanPipeline:
             location_only = re.sub(r'(\+|^)uj(\+|$)', r'\1\2', location_only)  # Csak önálló "uj"
             location_only = re.sub(r'\+uj(?=\+[a-z])', '+', location_only)  # "uj" + következő szó elején
             
-            # Maradó "u" betűk eltávolítása ha önállóak
-            location_only = re.sub(r'(\+|^)u(\+)', r'\1\2', location_only)  # Önálló "u" betű
+            # Maradó "u" betűk eltávolítása ha önállóak - JAVÍTOTT
+            location_only = re.sub(r'(\+|^)u(\+|$)', r'\1\2', location_only)  # Önálló "u" betű
+            location_only = re.sub(r'\+u(?=\+)', '+', location_only)  # "u" + plusz jel előtt
             
             # Ár szűrők eltávolítása (pl: 80-500-mFt, 80-500-mft, 100_200_m_ft)
             location_only = re.sub(r'\+?\d+[\-_]\d+[\-_]?m?[Ff]t\+?', '', location_only)
