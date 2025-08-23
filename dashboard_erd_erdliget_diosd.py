@@ -5,17 +5,17 @@ STREAMLIT DASHBOARD TEMPLATE - INGATLAN ELEMZÉS
 🎯 HASZNÁLAT:
 1. Másold le ezt a template fájlt új névvel (pl. dashboard_location.py)
 2. Cseréld le a TEMPLATE placeholder-eket:
-   - UERD ERDLIGET DIOSD -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
-   - ingatlan_reszletes_*uerd_erdliget_diosd*.csv, ingatlan_modern_enhanced_uerd_erdliget_diosd_*.csv, ingatlan_*uerd_erdliget_diosd*.csv -> konkrét CSV pattern-ek
+   - ÉRD-ÉRDLIGET-DIÓSD -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
+   - ingatlan_reszletes_erd_erdliget_diosd_*.csv, ingatlan_lista_erd_erdliget_diosd_*.csv, ingatlan_reszletes_erd_erdliget_diosd_*_koordinatak_*.csv -> konkrét CSV pattern-ek
 
 📋 PÉLDA CSERÉK:
 - Törökbálint-Tükörhegy esetén:
-  UERD ERDLIGET DIOSD -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
-  ingatlan_reszletes_*uerd_erdliget_diosd*.csv -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+  ÉRD-ÉRDLIGET-DIÓSD -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
+  ingatlan_reszletes_erd_erdliget_diosd_*.csv -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
   
 - XII. kerület esetén:
-  UERD ERDLIGET DIOSD -> "XII. KERÜLET" 
-  ingatlan_reszletes_*uerd_erdliget_diosd*.csv -> "ingatlan_reszletes_*xii_ker*.csv"
+  ÉRD-ÉRDLIGET-DIÓSD -> "XII. KERÜLET" 
+  ingatlan_reszletes_erd_erdliget_diosd_*.csv -> "ingatlan_reszletes_*xii_ker*.csv"
 
 ⚡ Fix lokáció + dinamikus időbélyeg = deployment stable + auto-update!
 """
@@ -38,7 +38,7 @@ warnings.filterwarnings('ignore')
 # Ezt a részt kell módosítani egyedi dashboard generálásnál
 def get_location_from_filename():
     """Fix location név visszaadása - ezt módosítani kell egyedi dashboard-oknál"""
-    return "UERD ERDLIGET DIOSD"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
+    return "ÉRD-ÉRDLIGET-DIÓSD"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
 
 location_name = get_location_from_filename()
 timestamp = datetime.now().strftime("%Y.%m.%d %H:%M")
@@ -57,9 +57,9 @@ def load_and_process_data():
         # TEMPLATE PLACEHOLDER - CSV lokáció pattern
         # Ezt a részt kell módosítani egyedi dashboard generálásnál
         location_patterns = [
-            "ingatlan_reszletes_*uerd_erdliget_diosd*.csv",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
-            "ingatlan_modern_enhanced_uerd_erdliget_diosd_*.csv",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
-            "ingatlan_*uerd_erdliget_diosd*.csv"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
+            "ingatlan_reszletes_erd_erdliget_diosd_*.csv",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+            "ingatlan_lista_erd_erdliget_diosd_*.csv",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
+            "ingatlan_reszletes_erd_erdliget_diosd_*_koordinatak_*.csv"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
         ]
         
         # Fix lokáció pattern keresés - mindig a legfrissebb CSV-t választja
