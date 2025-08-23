@@ -731,11 +731,22 @@ class KomplettIngatlanPipeline:
                 'uj_epitesu', 'ujszeru', 'felujitott', 'jo_allapot', 'kituno_allapot', 
                 'kozepes_allapot', 'felujitando', 'rossz_allapot', 'bonthato',
                 'uj-epitesu', 'jo-allapot', 'kituno-allapot', 'kozepes-allapot',
-                'epitesu', 'uj', 'ujszeru', 'felujitott', 'jo', 'allapot'  # Részletek is
+                'epitesu', 'ujszeru', 'felujitott', 'jo', 'allapot'
             ]
             
             for szuro in allapot_szurok:
                 location_only = location_only.replace(f'+{szuro}', '').replace(f'{szuro}+', '').replace(szuro, '')
+            
+            # Speciális "allapotu" kezelés - teljes eltávolítás
+            location_only = location_only.replace('jo-allapotu', '').replace('-allapotu', '').replace('allapotu', '')
+            
+            # Speciális "uj" kezelés - csak akkor távolítsuk el, ha önálló vagy állapot kontextusban
+            # Ne távolítsuk el, ha része egy nagyobb szónak (pl. "ujorszagut")
+            location_only = re.sub(r'(\+|^)uj(\+|$)', r'\1\2', location_only)  # Csak önálló "uj"
+            location_only = re.sub(r'\+uj(?=\+[a-z])', '+', location_only)  # "uj" + következő szó elején
+            
+            # Maradó "u" betűk eltávolítása ha önállóak
+            location_only = re.sub(r'(\+|^)u(\+)', r'\1\2', location_only)  # Önálló "u" betű
             
             # Ár szűrők eltávolítása (pl: 80-500-mFt, 80-500-mft, 100_200_m_ft)
             location_only = re.sub(r'\+?\d+[\-_]\d+[\-_]?m?[Ff]t\+?', '', location_only)
@@ -743,8 +754,20 @@ class KomplettIngatlanPipeline:
             location_only = re.sub(r'\+?\d+\-\d+\-m\-?ft\+?', '', location_only)
             location_only = re.sub(r'\+?\d+\-\d+\-mft\+?', '', location_only)
             
-            # Egyedi számok eltávolítása (pl. "20" négyzetméter vagy egyéb szűrők) 
-            location_only = re.sub(r'\+?\d{1,3}\+?', '', location_only)
+            # Szobaszám szűrők eltávolítása (pl: 3-szoba, 4-szoba, 3-szoba-felett, 2-szoba-alatt)
+            location_only = re.sub(r'\+?\d+[\-_]szoba[\-_]?(felett|alatt)?\+?', '', location_only)
+            location_only = re.sub(r'\+?szoba[\-_]?(felett|alatt)?\+?', '', location_only)
+            location_only = re.sub(r'\+?(felett|alatt)\+?', '', location_only)  # Maradék "felett", "alatt" szavak
+            
+            # Alapterület szűrők eltávolítása (pl: 60-120-m2, 80-nm)
+            location_only = re.sub(r'\+?\d+[\-_]\d+[\-_]?m2?\+?', '', location_only)
+            location_only = re.sub(r'\+?\d+[\-_]nm\+?', '', location_only)
+            location_only = re.sub(r'\+?\d+nm\+?', '', location_only)
+            
+            # Állapot-specifikus számok eltávolítása (pl. "20" csak ha ár/méret kontextusban)
+            # DE: ne távolítsunk el minden számot, mert kerületek is számok lehetnek
+            # Helyette csak akkor távolítsunk el, ha m2, ft, szoba, nm kontextusban van
+            location_only = re.sub(r'\+?\d{1,3}(?=[+_]?(m2?|ft|szoba|nm))\+?', '', location_only)
             
             # Dupla + jelek eltávolítása és tisztítás
             location_only = re.sub(r'\+{2,}', '+', location_only)
@@ -1234,12 +1257,12 @@ class UrlListScraper:
         try:
             print(f"🌐 Navigálás: {self.search_url}")
             
-            # Több próbálkozás robusztusabb betöltéssel
+            # Több próbálkozás robusztusabb betöltéssel - BIZTONSÁGOS VERZIÓ
             for attempt in range(3):
                 try:
                     print(f"  📡 Próbálkozás {attempt + 1}/3...")
                     await self.page.goto(self.search_url, wait_until='domcontentloaded', timeout=60000)
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(5)  # Visszaállítva biztonságos értékre
                     
                     # Ellenőrizzük, hogy betöltődött-e a tartalom
                     content = await self.page.content()
@@ -1252,7 +1275,7 @@ class UrlListScraper:
                 except Exception as e:
                     print(f"  ❌ {attempt + 1}. próbálkozás hiba: {e}")
                     if attempt < 2:
-                        await asyncio.sleep(3)
+                        await asyncio.sleep(3)  # Visszaállítva biztonságos értékre
                         continue
                     else:
                         raise
@@ -1432,19 +1455,35 @@ class UrlListScraper:
                     except:
                         pass
                     
-                    # Szobák száma - specifikus logikával
+                    # Szobák száma - specifikus logikával új DOM struktúra alapján
                     property_data['szobak'] = ""
                     try:
-                        all_spans = await element.query_selector_all('span')
-                        for i, span in enumerate(all_spans):
-                            text = await span.inner_text()
-                            if 'Szobák' in text and i + 1 < len(all_spans):
-                                next_span = all_spans[i + 1]
-                                room_text = await next_span.inner_text()
-                                if '+' in room_text or 'szoba' in room_text.lower():
-                                    property_data['szobak'] = room_text
-                                    break
-                    except:
+                        # Új struktúra: listing-property divekben keresünk
+                        property_divs = await element.query_selector_all('.listing-property')
+                        for div in property_divs:
+                            spans = await div.query_selector_all('span')
+                            if len(spans) >= 2:
+                                label_text = await spans[0].inner_text()
+                                if 'Szobák' in label_text:
+                                    value_text = await spans[1].inner_text()
+                                    # Csak számokat fogadunk el, vagy szám + fél típusú formátumot
+                                    if value_text.strip() and (value_text.strip().isdigit() or '+' in value_text or 'fél' in value_text.lower()):
+                                        property_data['szobak'] = value_text.strip()
+                                        break
+                        
+                        # Ha nem találtuk az új struktúrában, próbáljuk a régi módszerrel
+                        if not property_data['szobak']:
+                            all_spans = await element.query_selector_all('span')
+                            for i, span in enumerate(all_spans):
+                                text = await span.inner_text()
+                                if 'Szobák' in text and i + 1 < len(all_spans):
+                                    next_span = all_spans[i + 1]
+                                    room_text = await next_span.inner_text()
+                                    if '+' in room_text or 'szoba' in room_text.lower() or room_text.strip().isdigit():
+                                        property_data['szobak'] = room_text.strip()
+                                        break
+                    except Exception as e:
+                        print(f"Szobaszám kinyerési hiba: {e}")
                         pass
                     
                     # Képek száma - gallery-additional-photos-label-ből
@@ -1636,11 +1675,11 @@ class DetailedScraper:
         detailed_data = []
         urls = df['link'].dropna().tolist()
         
-        # SIMPLE SESSION WARMUP - PIPELINE STYLE
+        # SIMPLE SESSION WARMUP - PIPELINE STYLE - BIZTONSÁGOS VERZIÓ
         try:
             print(f"\n🌐 Session warmup...")
             await self.page.goto('https://ingatlan.com/', wait_until='domcontentloaded', timeout=60000)
-            await asyncio.sleep(5)  # Pipeline proven timing
+            await asyncio.sleep(5)  # Pipeline proven timing - visszaállított biztonságos érték
             
             print(f"✅ Session előkészítve")
         except Exception as e:
@@ -1658,20 +1697,28 @@ class DetailedScraper:
                 
                 # Kombináció
                 combined = {**original_data, **details}
+                
+                # Szobaszám logolás az emelet helyett
+                szobak = combined.get('szobak', '')
+                if szobak and szobak.strip():
+                    print(f"    🏠 Szobák: {szobak}")
+                else:
+                    print(f"    🏠 Szobák: nincs adat")
+                
                 detailed_data.append(combined)
                 
-                # Humán-szerű várakozás változatos időkkel
+                # Humán-szerű várakozás változatos időkkel - BIZTONSÁGOS VERZIÓ
                 if i < len(urls):
-                    # Exponenciálisan növekvő várakozási idő bot detekció elkerülésére
-                    base_wait = random.uniform(2.5, 4.5)
-                    if i > 5:  # 5. kérés után még lassabb
-                        base_wait = random.uniform(4.0, 6.5)
+                    # Visszaállított várakozási idők a captcha elkerülésére
+                    base_wait = random.uniform(2.5, 4.5)  # Visszaállítva biztonságosra
+                    if i > 5:  # 5. kérés után kissé lassabb
+                        base_wait = random.uniform(4.0, 6.5)  # Visszaállítva biztonságosra
                     if i > 10:  # 10. kérés után még lassabb
-                        base_wait = random.uniform(5.5, 8.0)
+                        base_wait = random.uniform(5.5, 8.0)  # Visszaállítva biztonságosra
                         
-                    # Minden 5. kérésnél extra hosszú szünet
+                    # Minden 5. kérésnél extra szünet - visszaállítva
                     if i % 5 == 0:
-                        base_wait += random.uniform(2.0, 4.0)
+                        base_wait += random.uniform(2.0, 4.0)  # Visszaállítva biztonságosra
                         print(f"  🔄 Extra szünet {i}. kérésnél...")
                     
                     print(f"  ⏰ Várakozás {base_wait:.1f}s...")
@@ -1696,7 +1743,7 @@ class DetailedScraper:
             
             # SIMPLE NAVIGATION - PIPELINE PROVEN
             await self.page.goto(url, wait_until='domcontentloaded', timeout=30000)
-            await asyncio.sleep(random.uniform(2.0, 3.0))  # Pipeline timing
+            await asyncio.sleep(random.uniform(2.5, 4.0))  # Pipeline timing - visszaállított biztonságos érték
             
             # Részletes cím
             try:
@@ -1766,11 +1813,11 @@ class DetailedScraper:
                             elif 'szint' in label and 'szintjei' not in label:
                                 if 'szint' not in table_data or table_data['szint'] != value:
                                     table_data['szint'] = value
-                                    print(f"    🎯 Szint: {value}")
+                                    # Szint/emelet logolás eltávolítva - szobaszám logolás lesz helyette
                             elif 'emelet' in label:
                                 if 'szint' not in table_data or table_data['szint'] != value:
                                     table_data['szint'] = value
-                                    print(f"    🎯 Emelet: {value}")
+                                    # Emelet logolás eltávolítva - szobaszám logolás lesz helyette
                             elif 'építés éve' in label:
                                 table_data['epitesi_ev'] = value
                             elif 'fűtés' in label:
