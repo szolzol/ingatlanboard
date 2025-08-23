@@ -671,6 +671,203 @@ def main():
                 'Átlag Családbarát Pont': round(filtered_df[has_feature]['csaladbarati_pontszam'].mean(), 1) if count > 0 else 0
             })
     
+    # 🏠 LAKÁS/HÁZ SPECIFIKUS KATEGORIKUS ELEMZÉSEK 🏠
+    
+    # 🏢 Hirdető típus elemzés
+    if 'hirdeto_tipus' in filtered_df.columns:
+        hirdeto_stats = filtered_df['hirdeto_tipus'].value_counts()
+        for hirdeto, count in hirdeto_stats.head(3).items():
+            categorical_cols.append('🏢 Hirdető Típus')
+            categorical_data.append({
+                'Kategória': str(hirdeto),
+                'Darabszám': count,
+                'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                'Átlag Ár (M Ft)': round(filtered_df[filtered_df['hirdeto_tipus'] == hirdeto]['teljes_ar_millió'].mean(), 1),
+                'Átlag Családbarát Pont': round(filtered_df[filtered_df['hirdeto_tipus'] == hirdeto]['csaladbarati_pontszam'].mean(), 1)
+            })
+    
+    # 🏗️ Emelet/Szint elemzés (lakásoknál)
+    if 'szint' in filtered_df.columns:
+        szint_stats = filtered_df['szint'].value_counts()
+        for szint, count in szint_stats.head(5).items():
+            if pd.notna(szint) and count >= 2:  # Csak ha legalább 2 ingatlan van
+                categorical_cols.append('🏗️ Emelet/Szint')
+                categorical_data.append({
+                    'Kategória': str(szint),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['szint'] == szint]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['szint'] == szint]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🌿 Erkély elemzés
+    if 'erkely' in filtered_df.columns:
+        erkely_stats = filtered_df['erkely'].value_counts()
+        for erkely, count in erkely_stats.head(3).items():
+            if pd.notna(erkely) and count >= 2:
+                categorical_cols.append('🌿 Erkély')
+                categorical_data.append({
+                    'Kategória': str(erkely),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['erkely'] == erkely]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['erkely'] == erkely]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🚗 Parkolás elemzés
+    parkolas_cols = ['parkolas', 'parkolo']
+    for park_col in parkolas_cols:
+        if park_col in filtered_df.columns:
+            park_stats = filtered_df[park_col].value_counts()
+            for park, count in park_stats.head(3).items():
+                if pd.notna(park) and count >= 2:
+                    categorical_cols.append('🚗 Parkolás')
+                    categorical_data.append({
+                        'Kategória': str(park),
+                        'Darabszám': count,
+                        'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                        'Átlag Ár (M Ft)': round(filtered_df[filtered_df[park_col] == park]['teljes_ar_millió'].mean(), 1),
+                        'Átlag Családbarát Pont': round(filtered_df[filtered_df[park_col] == park]['csaladbarati_pontszam'].mean(), 1)
+                    })
+            break  # Csak az első megtalált oszlopot használjuk
+    
+    # 🏗️ Építési év elemzés (évtized szerint)
+    if 'epitesi_ev' in filtered_df.columns:
+        # Évtized kategóriák létrehozása
+        filtered_df_copy = filtered_df.copy()
+        def get_decade(year_str):
+            try:
+                if pd.notna(year_str):
+                    year = int(str(year_str).split('.')[0])  # pl. "2010.0" -> 2010
+                    if year >= 2020:
+                        return '2020-as évek'
+                    elif year >= 2010:
+                        return '2010-es évek'
+                    elif year >= 2000:
+                        return '2000-es évek'
+                    elif year >= 1990:
+                        return '1990-es évek'
+                    elif year >= 1980:
+                        return '1980-as évek'
+                    elif year >= 1970:
+                        return '1970-es évek'
+                    else:
+                        return 'Korábbi építés'
+                return 'Nincs adat'
+            except:
+                return 'Nincs adat'
+        
+        filtered_df_copy['epitesi_evtized'] = filtered_df_copy['epitesi_ev'].apply(get_decade)
+        decade_stats = filtered_df_copy['epitesi_evtized'].value_counts()
+        for decade, count in decade_stats.head(5).items():
+            if count >= 2 and decade != 'Nincs adat':
+                categorical_cols.append('🏗️ Építési Évtized')
+                categorical_data.append({
+                    'Kategória': decade,
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df_copy[filtered_df_copy['epitesi_evtized'] == decade]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df_copy[filtered_df_copy['epitesi_evtized'] == decade]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # ❄️ Légkondícionáló elemzés
+    if 'legkondicionalas' in filtered_df.columns:
+        klima_stats = filtered_df['legkondicionalas'].value_counts()
+        for klima, count in klima_stats.head(3).items():
+            if pd.notna(klima) and count >= 2:
+                categorical_cols.append('❄️ Légkondícionáló')
+                categorical_data.append({
+                    'Kategória': str(klima),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['legkondicionalas'] == klima]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['legkondicionalas'] == klima]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🏠 Komfort szint elemzés
+    if 'komfort' in filtered_df.columns:
+        komfort_stats = filtered_df['komfort'].value_counts()
+        for komfort, count in komfort_stats.head(4).items():
+            if pd.notna(komfort) and count >= 2:
+                categorical_cols.append('🏠 Komfort')
+                categorical_data.append({
+                    'Kategória': str(komfort),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['komfort'] == komfort]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['komfort'] == komfort]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🔥 Fűtés típus elemzés
+    if 'futes' in filtered_df.columns:
+        futes_stats = filtered_df['futes'].value_counts()
+        for futes, count in futes_stats.head(4).items():
+            if pd.notna(futes) and count >= 2:
+                categorical_cols.append('🔥 Fűtés')
+                categorical_data.append({
+                    'Kategória': str(futes)[:30],  # Max 30 karakter
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['futes'] == futes]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['futes'] == futes]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🌅 Kilátás elemzés
+    if 'kilatas' in filtered_df.columns:
+        kilatas_stats = filtered_df['kilatas'].value_counts()
+        for kilatas, count in kilatas_stats.head(4).items():
+            if pd.notna(kilatas) and count >= 2:
+                categorical_cols.append('🌅 Kilátás')
+                categorical_data.append({
+                    'Kategória': str(kilatas),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['kilatas'] == kilatas]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['kilatas'] == kilatas]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🌳 Kert elemzés (házaknál)
+    if 'kert' in filtered_df.columns:
+        kert_stats = filtered_df['kert'].value_counts()
+        for kert, count in kert_stats.head(3).items():
+            if pd.notna(kert) and count >= 2:
+                categorical_cols.append('🌳 Kert')
+                categorical_data.append({
+                    'Kategória': str(kert),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['kert'] == kert]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['kert'] == kert]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🏗️ Épület szintjei elemzés (házaknál)
+    if 'epulet_szintjei' in filtered_df.columns:
+        szintek_stats = filtered_df['epulet_szintjei'].value_counts()
+        for szintek, count in szintek_stats.head(4).items():
+            if pd.notna(szintek) and count >= 2:
+                categorical_cols.append('🏗️ Épület Szintjei')
+                categorical_data.append({
+                    'Kategória': str(szintek),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['epulet_szintjei'] == szintek]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['epulet_szintjei'] == szintek]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # ☀️ Napelem elemzés (házaknál)
+    if 'napelem' in filtered_df.columns:
+        napelem_stats = filtered_df['napelem'].value_counts()
+        for napelem, count in napelem_stats.head(2).items():
+            if pd.notna(napelem) and count >= 2:
+                categorical_cols.append('☀️ Napelem')
+                categorical_data.append({
+                    'Kategória': str(napelem),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['napelem'] == napelem]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['napelem'] == napelem]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
     if categorical_data:
         categorical_df = pd.DataFrame(categorical_data)
         categorical_df.insert(0, 'Típus', categorical_cols)
@@ -868,31 +1065,31 @@ def create_interactive_map(df, location_name):
     legend_html = f"""
     <div style='position: fixed; 
                 top: 10px; right: 10px; width: 180px; height: auto; 
-                background-color: white; border:2px solid grey; z-index:9999; 
-                font-size:12px; padding: 10px'>
+                background-color: rgba(40, 40, 40, 0.95); border:2px solid #444; z-index:9999; 
+                font-size:12px; padding: 10px; color: white; border-radius: 5px;'>
     <h4 style='margin-top:0;'>� Árszínkódolás</h4>
-    <p style='margin: 3px 0;'>
+    <p style='margin: 3px 0; color: #ffffff;'>
         <span style='color:#2ECC71; font-size: 16px;'>●</span> 
         ≤100 M Ft: olcsó
     </p>
-    <p style='margin: 3px 0;'>
+    <p style='margin: 3px 0; color: #ffffff;'>
         <span style='color:#F39C12; font-size: 16px;'>●</span> 
         101-200 M Ft: közepes
     </p>
-    <p style='margin: 3px 0;'>
+    <p style='margin: 3px 0; color: #ffffff;'>
         <span style='color:#E74C3C; font-size: 16px;'>●</span> 
         201-300 M Ft: drága
     </p>
-    <p style='margin: 3px 0;'>
+    <p style='margin: 3px 0; color: #ffffff;'>
         <span style='color:#8E44AD; font-size: 16px;'>●</span> 
         300+ M Ft: nagyon drága
     </p>
-    <p style='margin: 3px 0;'>
+    <p style='margin: 3px 0; color: #ffffff;'>
         <span style='color:#95A5A6; font-size: 16px;'>●</span> 
         Nincs ár adat
     </p>
     <hr style='margin: 8px 0;'>
-    <p style='margin: 3px 0; font-size: 10px;'>
+    <p style='margin: 3px 0; font-size: 10px; color: #cccccc;'>
         🔗 Kattints a markerekre<br/>részletes információkért
     </p>
     </div>
