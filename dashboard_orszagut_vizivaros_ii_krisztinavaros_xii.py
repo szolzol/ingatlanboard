@@ -5,17 +5,17 @@ STREAMLIT DASHBOARD TEMPLATE - INGATLAN ELEMZÉS
 🎯 HASZNÁLAT:
 1. Másold le ezt a template fájlt új névvel (pl. dashboard_location.py)
 2. Cseréld le a TEMPLATE placeholder-eket:
-   - ORSZAGUT VIZIVAROS II KRISZTINAVAROS XII -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
-   - ingatlan_reszletes_*orszagut_vizivaros_ii_krisztinavaros_xii*.csv, ingatlan_modern_enhanced_orszagut_vizivaros_ii_krisztinavaros_xii_*.csv, ingatlan_*orszagut_vizivaros_ii_krisztinavaros_xii*.csv -> konkrét CSV pattern-ek
+   - ORSZÁGÚT-VÍZIVÁROS II.-KRISZTINAVÁROS XII. -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
+   - ingatlan_reszletes_orszagut_vizivaros_ii_krisztinavaros_xii_*.csv, ingatlan_lista_orszagut_vizivaros_ii_krisztinavaros_xii_*.csv, ingatlan_reszletes_orszagut_vizivaros_ii_krisztinavaros_xii_*_koordinatak_*.csv -> konkrét CSV pattern-ek
 
 📋 PÉLDA CSERÉK:
 - Törökbálint-Tükörhegy esetén:
-  ORSZAGUT VIZIVAROS II KRISZTINAVAROS XII -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
-  ingatlan_reszletes_*orszagut_vizivaros_ii_krisztinavaros_xii*.csv -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+  ORSZÁGÚT-VÍZIVÁROS II.-KRISZTINAVÁROS XII. -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
+  ingatlan_reszletes_orszagut_vizivaros_ii_krisztinavaros_xii_*.csv -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
   
 - XII. kerület esetén:
-  ORSZAGUT VIZIVAROS II KRISZTINAVAROS XII -> "XII. KERÜLET" 
-  ingatlan_reszletes_*orszagut_vizivaros_ii_krisztinavaros_xii*.csv -> "ingatlan_reszletes_*xii_ker*.csv"
+  ORSZÁGÚT-VÍZIVÁROS II.-KRISZTINAVÁROS XII. -> "XII. KERÜLET" 
+  ingatlan_reszletes_orszagut_vizivaros_ii_krisztinavaros_xii_*.csv -> "ingatlan_reszletes_*xii_ker*.csv"
 
 ⚡ Fix lokáció + dinamikus időbélyeg = deployment stable + auto-update!
 """
@@ -38,7 +38,7 @@ warnings.filterwarnings('ignore')
 # Ezt a részt kell módosítani egyedi dashboard generálásnál
 def get_location_from_filename():
     """Fix location név visszaadása - ezt módosítani kell egyedi dashboard-oknál"""
-    return "ORSZAGUT VIZIVAROS II KRISZTINAVAROS XII"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
+    return "ORSZÁGÚT-VÍZIVÁROS II.-KRISZTINAVÁROS XII."  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
 
 location_name = get_location_from_filename()
 timestamp = datetime.now().strftime("%Y.%m.%d %H:%M")
@@ -57,9 +57,9 @@ def load_and_process_data():
         # TEMPLATE PLACEHOLDER - CSV lokáció pattern
         # Ezt a részt kell módosítani egyedi dashboard generálásnál
         location_patterns = [
-            "ingatlan_reszletes_*orszagut_vizivaros_ii_krisztinavaros_xii*.csv",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
-            "ingatlan_modern_enhanced_orszagut_vizivaros_ii_krisztinavaros_xii_*.csv",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
-            "ingatlan_*orszagut_vizivaros_ii_krisztinavaros_xii*.csv"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
+            "ingatlan_reszletes_orszagut_vizivaros_ii_krisztinavaros_xii_*.csv",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+            "ingatlan_lista_orszagut_vizivaros_ii_krisztinavaros_xii_*.csv",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
+            "ingatlan_reszletes_orszagut_vizivaros_ii_krisztinavaros_xii_*_koordinatak_*.csv"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
         ]
         
         # Fix lokáció pattern keresés - mindig a legfrissebb CSV-t választja
@@ -210,7 +210,7 @@ def main():
     
     # Fejléc
     st.title(f"👨‍👩‍👧‍👦 Ingatlan Dashboard - {location_name} - {timestamp}")
-    st.markdown("**3 gyerekes családok számára optimalizált ingatlankeresés**")
+    st.markdown("**Több gyerekes családok számára optimalizált ingatlankeresés**")
     st.markdown("*Nagy méret, remek állapot, modern funkciók, mégis jó ár/érték arány*")
     
     # Adatok betöltése
@@ -358,60 +358,20 @@ def main():
         st.metric("🏠 Átlag szobaszám", f"{avg_rooms:.1f}")
     
     with col4:
-        avg_family_score = filtered_df['csaladbarati_pontszam'].mean()
-        st.metric("👨‍👩‍👧‍👦 Átlag családbarát pont", f"{avg_family_score:.1f}")
-    
-    # Top 5 legjobb ingatlan
-    st.header("🏆 TOP 5 Legcsaládbarátabb Ingatlan")
-    
-    top_5 = filtered_df.nlargest(5, 'csaladbarati_pontszam')
-    
-    for idx, (_, row) in enumerate(top_5.iterrows(), 1):
-        # URL generálása
-        ingatlan_url = generate_ingatlan_url(row)
-        title_text = f"#{idx} - {row.get('cim', 'Cím hiányzik')} - {row['csaladbarati_pontszam']:.1f} pont"
-        
-        # Link hozzáadása ha van URL
-        if ingatlan_url:
-            title_with_link = f"{title_text} | [🔗 Megtekintés]({ingatlan_url})"
+        # Átlagos m² ár számítása
+        valid_data = filtered_df.dropna(subset=['teljes_ar_millió', 'terulet_szam'])
+        if not valid_data.empty:
+            avg_price_per_sqm = (valid_data['teljes_ar_millió'] * 1000000 / valid_data['terulet_szam']).mean()
+            st.metric("� Átlagos m² ár", f"{avg_price_per_sqm:,.0f} Ft/m²")
         else:
-            title_with_link = title_text
-            
-        with st.expander(title_with_link):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write(f"**💰 Ár:** {row.get('teljes_ar', 'N/A')}")
-                st.write(f"**📐 Terület:** {row.get('terulet', 'N/A')}")
-                st.write(f"**🏠 Szobák:** {row.get('szobak', 'N/A')}")
-                st.write(f"**🔧 Állapot:** {row.get('ingatlan_allapota', 'N/A')}")
-                if ingatlan_url:
-                    st.markdown(f"**🔗 Link:** [Ingatlan megtekintése]({ingatlan_url})")
-            
-            with col2:
-                st.write(f"**🌞 Zöld energia:** {'✅' if row.get('van_zold_energia', False) else '❌'}")
-                st.write(f"**🏊 Wellness:** {'✅' if row.get('van_wellness_luxury', False) else '❌'}")
-                st.write(f"**🏠 Smart tech:** {'✅' if row.get('van_smart_tech', False) else '❌'}")
-                st.write(f"**💎 Premium design:** {'✅' if row.get('van_premium_design', False) else '❌'}")
+            st.metric("💰 Átlagos m² ár", "N/A")
 
     # 🗺️ INTERAKTÍV TÉRKÉP - szűrt adatokkal
     create_interactive_map(filtered_df, location_name)
     
     # Vizualizációk
     st.header("📊 Vizualizációk")
-    
-    # Ár vs Terület scatter plot családbarát pontszám szerint
-    fig1 = px.scatter(
-        filtered_df, 
-        x='terulet_szam', 
-        y='teljes_ar_millió',
-        color='csaladbarati_pontszam',
-        hover_data=['cim', 'ingatlan_allapota'],
-        title="Ár vs Terület (színkód: családbarát pontszám)",
-        labels={'terulet_szam': 'Terület (m²)', 'teljes_ar_millió': 'Ár (M Ft)'}
-    )
-    st.plotly_chart(fig1, use_container_width=True)
-    
+        
     # Scatter Plot Elemzés
     st.subheader("📈 Ár vs. Egyéb Változók Elemzése")
     
@@ -670,8 +630,6 @@ def main():
                 'Átlag Ár (M Ft)': round(filtered_df[has_feature]['teljes_ar_millió'].mean(), 1) if count > 0 else 0,
                 'Átlag Családbarát Pont': round(filtered_df[has_feature]['csaladbarati_pontszam'].mean(), 1) if count > 0 else 0
             })
-    
-    # 🏠 LAKÁS/HÁZ SPECIFIKUS KATEGORIKUS ELEMZÉSEK 🏠
     
     # 🏢 Hirdető típus elemzés
     if 'hirdeto_tipus' in filtered_df.columns:
@@ -962,7 +920,7 @@ def main():
     """)
     st.markdown("---")
     st.markdown("**📊 További Megjegyzések:**")
-    st.markdown("- A családbarát pontszám 3 gyerekes családok igényeit figyelembe véve készült")
+    st.markdown("- A családbarát pontszám Több gyerekes családok igényeit figyelembe véve készült")
     st.markdown("- 150+ m² és 4+ szoba ideális nagyobb családok számára")  
     st.markdown("- A modern pontszám további kényelmi és technológiai elemeket értékel")
     st.markdown("- Az adatok 2025.08.21-i állapot szerint frissültek")
@@ -1061,35 +1019,35 @@ def create_interactive_map(df, location_name):
             st.warning(f"Marker hiba: {e}")
             continue
     
-    # Legenda hozzáadása - ár alapú színkódolás
+    # Legenda hozzáadása - ár alapú színkódolás (DARK MODE kompatibilis)
     legend_html = f"""
     <div style='position: fixed; 
                 top: 10px; right: 10px; width: 180px; height: auto; 
-                background-color: rgba(40, 40, 40, 0.95); border:2px solid #444; z-index:9999; 
-                font-size:12px; padding: 10px; color: white; border-radius: 5px;'>
-    <h4 style='margin-top:0;'>� Árszínkódolás</h4>
-    <p style='margin: 3px 0; color: #ffffff;'>
+                background-color: rgba(40, 40, 40, 0.9); border:2px solid #666; z-index:9999; 
+                font-size:12px; padding: 10px; color: white;'>
+    <h4 style='margin-top:0; color: white;'>� Árszínkódolás</h4>
+    <p style='margin: 3px 0;'>
         <span style='color:#2ECC71; font-size: 16px;'>●</span> 
         ≤100 M Ft: olcsó
     </p>
-    <p style='margin: 3px 0; color: #ffffff;'>
+    <p style='margin: 3px 0;'>
         <span style='color:#F39C12; font-size: 16px;'>●</span> 
         101-200 M Ft: közepes
     </p>
-    <p style='margin: 3px 0; color: #ffffff;'>
+    <p style='margin: 3px 0;'>
         <span style='color:#E74C3C; font-size: 16px;'>●</span> 
         201-300 M Ft: drága
     </p>
-    <p style='margin: 3px 0; color: #ffffff;'>
+    <p style='margin: 3px 0;'>
         <span style='color:#8E44AD; font-size: 16px;'>●</span> 
         300+ M Ft: nagyon drága
     </p>
-    <p style='margin: 3px 0; color: #ffffff;'>
+    <p style='margin: 3px 0;'>
         <span style='color:#95A5A6; font-size: 16px;'>●</span> 
         Nincs ár adat
     </p>
     <hr style='margin: 8px 0;'>
-    <p style='margin: 3px 0; font-size: 10px; color: #cccccc;'>
+    <p style='margin: 3px 0; font-size: 10px;'>
         🔗 Kattints a markerekre<br/>részletes információkért
     </p>
     </div>

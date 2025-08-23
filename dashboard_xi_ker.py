@@ -5,17 +5,17 @@ STREAMLIT DASHBOARD TEMPLATE - INGATLAN ELEMZÉS
 🎯 HASZNÁLAT:
 1. Másold le ezt a template fájlt új névvel (pl. dashboard_location.py)
 2. Cseréld le a TEMPLATE placeholder-eket:
-   - {{LOCATION_NAME}} -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
-   - {{CSV_PATTERN_1}}, {{CSV_PATTERN_2}}, {{CSV_PATTERN_3}} -> konkrét CSV pattern-ek
+   - XI. KERÜLET -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
+   - ingatlan_reszletes_xi_ker_*.csv, ingatlan_lista_xi_ker_*.csv, ingatlan_reszletes_xi_ker_*_koordinatak_*.csv -> konkrét CSV pattern-ek
 
 📋 PÉLDA CSERÉK:
 - Törökbálint-Tükörhegy esetén:
-  {{LOCATION_NAME}} -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
-  {{CSV_PATTERN_1}} -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+  XI. KERÜLET -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
+  ingatlan_reszletes_xi_ker_*.csv -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
   
 - XII. kerület esetén:
-  {{LOCATION_NAME}} -> "XII. KERÜLET" 
-  {{CSV_PATTERN_1}} -> "ingatlan_reszletes_*xii_ker*.csv"
+  XI. KERÜLET -> "XII. KERÜLET" 
+  ingatlan_reszletes_xi_ker_*.csv -> "ingatlan_reszletes_*xii_ker*.csv"
 
 ⚡ Fix lokáció + dinamikus időbélyeg = deployment stable + auto-update!
 """
@@ -58,8 +58,8 @@ def load_and_process_data():
         # Ezt a részt kell módosítani egyedi dashboard generálásnál
         location_patterns = [
             "ingatlan_reszletes_xi_ker_*.csv",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
-            "ingatlan_modern_enhanced_xi_ker_*.csv",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
-            "ingatlan_reszletes_*xi_ker*.csv"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
+            "ingatlan_lista_xi_ker_*.csv",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
+            "ingatlan_reszletes_xi_ker_*_koordinatak_*.csv"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
         ]
         
         # Fix lokáció pattern keresés - mindig a legfrissebb CSV-t választja
@@ -362,7 +362,7 @@ def main():
         valid_data = filtered_df.dropna(subset=['teljes_ar_millió', 'terulet_szam'])
         if not valid_data.empty:
             avg_price_per_sqm = (valid_data['teljes_ar_millió'] * 1000000 / valid_data['terulet_szam']).mean()
-            st.metric("💰 Átlagos m² ár", f"{avg_price_per_sqm:,.0f} Ft/m²")
+            st.metric("� Átlagos m² ár", f"{avg_price_per_sqm:,.0f} Ft/m²")
         else:
             st.metric("💰 Átlagos m² ár", "N/A")
 
@@ -371,19 +371,7 @@ def main():
     
     # Vizualizációk
     st.header("📊 Vizualizációk")
-    
-    # Ár vs Terület scatter plot családbarát pontszám szerint
-    fig1 = px.scatter(
-        filtered_df, 
-        x='terulet_szam', 
-        y='teljes_ar_millió',
-        color='csaladbarati_pontszam',
-        hover_data=['cim', 'ingatlan_allapota'],
-        title="Ár vs Terület (színkód: családbarát pontszám)",
-        labels={'terulet_szam': 'Terület (m²)', 'teljes_ar_millió': 'Ár (M Ft)'}
-    )
-    st.plotly_chart(fig1, use_container_width=True)
-    
+        
     # Scatter Plot Elemzés
     st.subheader("📈 Ár vs. Egyéb Változók Elemzése")
     
@@ -1037,7 +1025,7 @@ def create_interactive_map(df, location_name):
                 top: 10px; right: 10px; width: 180px; height: auto; 
                 background-color: rgba(40, 40, 40, 0.9); border:2px solid #666; z-index:9999; 
                 font-size:12px; padding: 10px; color: white;'>
-    <h4 style='margin-top:0; color: white;'>💰 Árszínkódolás</h4>
+    <h4 style='margin-top:0; color: white;'>� Árszínkódolás</h4>
     <p style='margin: 3px 0;'>
         <span style='color:#2ECC71; font-size: 16px;'>●</span> 
         ≤100 M Ft: olcsó

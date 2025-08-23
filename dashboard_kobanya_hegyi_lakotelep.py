@@ -5,17 +5,17 @@ STREAMLIT DASHBOARD TEMPLATE - INGATLAN ELEMZÉS
 🎯 HASZNÁLAT:
 1. Másold le ezt a template fájlt új névvel (pl. dashboard_location.py)
 2. Cseréld le a TEMPLATE placeholder-eket:
-   - KOBANYA HEGYI LAKOTELEP -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
-   - ingatlan_reszletes_*kobanya_hegyi_lakotelep*.csv, ingatlan_modern_enhanced_kobanya_hegyi_lakotelep_*.csv, ingatlan_*kobanya_hegyi_lakotelep*.csv -> konkrét CSV pattern-ek
+   - KŐBÁNYA HEGYI LAKÓTELEP -> "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", stb.
+   - ingatlan_reszletes_kobanya_hegyi_lakotelep_*_koordinatak_*.csv, ingatlan_reszletes_kobanya_hegyi_lakotelep_*.csv, ingatlan_lista_kobanya_hegyi_lakotelep_*.csv -> konkrét CSV pattern-ek
 
 📋 PÉLDA CSERÉK:
 - Törökbálint-Tükörhegy esetén:
-  KOBANYA HEGYI LAKOTELEP -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
-  ingatlan_reszletes_*kobanya_hegyi_lakotelep*.csv -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+  KŐBÁNYA HEGYI LAKÓTELEP -> "TÖRÖKBÁLINT-TÜKÖRHEGY"
+  ingatlan_reszletes_kobanya_hegyi_lakotelep_*_koordinatak_*.csv -> "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
   
 - XII. kerület esetén:
-  KOBANYA HEGYI LAKOTELEP -> "XII. KERÜLET" 
-  ingatlan_reszletes_*kobanya_hegyi_lakotelep*.csv -> "ingatlan_reszletes_*xii_ker*.csv"
+  KŐBÁNYA HEGYI LAKÓTELEP -> "XII. KERÜLET" 
+  ingatlan_reszletes_kobanya_hegyi_lakotelep_*_koordinatak_*.csv -> "ingatlan_reszletes_*xii_ker*.csv"
 
 ⚡ Fix lokáció + dinamikus időbélyeg = deployment stable + auto-update!
 """
@@ -30,13 +30,15 @@ import os
 from datetime import datetime
 import glob
 import warnings
+import folium
+from streamlit_folium import st_folium
 warnings.filterwarnings('ignore')
 
 # TEMPLATE PLACEHOLDER - Location név és CSV pattern
 # Ezt a részt kell módosítani egyedi dashboard generálásnál
 def get_location_from_filename():
     """Fix location név visszaadása - ezt módosítani kell egyedi dashboard-oknál"""
-    return "KOBANYA HEGYI LAKOTELEP"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
+    return "KŐBÁNYA HEGYI LAKÓTELEP"  # TEMPLATE: pl. "TÖRÖKBÁLINT-TÜKÖRHEGY", "XII. KERÜLET", "BUDAÖRS"
 
 location_name = get_location_from_filename()
 timestamp = datetime.now().strftime("%Y.%m.%d %H:%M")
@@ -55,9 +57,9 @@ def load_and_process_data():
         # TEMPLATE PLACEHOLDER - CSV lokáció pattern
         # Ezt a részt kell módosítani egyedi dashboard generálásnál
         location_patterns = [
-            "ingatlan_reszletes_*kobanya_hegyi_lakotelep*.csv",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
-            "ingatlan_modern_enhanced_kobanya_hegyi_lakotelep_*.csv",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
-            "ingatlan_*kobanya_hegyi_lakotelep*.csv"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
+            "ingatlan_reszletes_kobanya_hegyi_lakotelep_*_koordinatak_*.csv",  # TEMPLATE: pl. "ingatlan_reszletes_torokbalint_tukorhegy_*.csv"
+            "ingatlan_reszletes_kobanya_hegyi_lakotelep_*.csv",  # TEMPLATE: pl. "ingatlan_modern_enhanced_budaors_*.csv" 
+            "ingatlan_lista_kobanya_hegyi_lakotelep_*.csv"   # TEMPLATE: pl. "ingatlan_reszletes_*budaors*.csv"
         ]
         
         # Fix lokáció pattern keresés - mindig a legfrissebb CSV-t választja
@@ -208,7 +210,7 @@ def main():
     
     # Fejléc
     st.title(f"👨‍👩‍👧‍👦 Ingatlan Dashboard - {location_name} - {timestamp}")
-    st.markdown("**3 gyerekes családok számára optimalizált ingatlankeresés**")
+    st.markdown("**Több gyerekes családok számára optimalizált ingatlankeresés**")
     st.markdown("*Nagy méret, remek állapot, modern funkciók, mégis jó ár/érték arány*")
     
     # Adatok betöltése
@@ -356,59 +358,20 @@ def main():
         st.metric("🏠 Átlag szobaszám", f"{avg_rooms:.1f}")
     
     with col4:
-        avg_family_score = filtered_df['csaladbarati_pontszam'].mean()
-        st.metric("👨‍👩‍👧‍👦 Átlag családbarát pont", f"{avg_family_score:.1f}")
-    
-    # Top 5 legjobb ingatlan
-    st.header("🏆 TOP 5 Legcsaládbarátabb Ingatlan")
-    
-    top_5 = filtered_df.nlargest(5, 'csaladbarati_pontszam')
-    
-    for idx, (_, row) in enumerate(top_5.iterrows(), 1):
-        # URL generálása
-        ingatlan_url = generate_ingatlan_url(row)
-        title_text = f"#{idx} - {row.get('cim', 'Cím hiányzik')} - {row['csaladbarati_pontszam']:.1f} pont"
-        
-        # Link hozzáadása ha van URL
-        if ingatlan_url:
-            title_with_link = f"{title_text} | [🔗 Megtekintés]({ingatlan_url})"
+        # Átlagos m² ár számítása
+        valid_data = filtered_df.dropna(subset=['teljes_ar_millió', 'terulet_szam'])
+        if not valid_data.empty:
+            avg_price_per_sqm = (valid_data['teljes_ar_millió'] * 1000000 / valid_data['terulet_szam']).mean()
+            st.metric("� Átlagos m² ár", f"{avg_price_per_sqm:,.0f} Ft/m²")
         else:
-            title_with_link = title_text
-            
-        with st.expander(title_with_link):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write(f"**💰 Ár:** {row.get('teljes_ar', 'N/A')}")
-                st.write(f"**📐 Terület:** {row.get('terulet', 'N/A')}")
-                st.write(f"**🏠 Szobák:** {row.get('szobak', 'N/A')}")
-                st.write(f"**🔧 Állapot:** {row.get('ingatlan_allapota', 'N/A')}")
-                if ingatlan_url:
-                    st.markdown(f"**🔗 Link:** [Ingatlan megtekintése]({ingatlan_url})")
-            
-            with col2:
-                st.write(f"**🌞 Zöld energia:** {'✅' if row.get('van_zold_energia', False) else '❌'}")
-                st.write(f"**🏊 Wellness:** {'✅' if row.get('van_wellness_luxury', False) else '❌'}")
-                st.write(f"**🏠 Smart tech:** {'✅' if row.get('van_smart_tech', False) else '❌'}")
-                st.write(f"**💎 Premium design:** {'✅' if row.get('van_premium_design', False) else '❌'}")
-                if 'varosresz_kategoria' in row:
-                    st.write(f"**🏘️ Városrész:** {row.get('varosresz_kategoria', 'N/A')}")
+            st.metric("💰 Átlagos m² ár", "N/A")
+
+    # 🗺️ INTERAKTÍV TÉRKÉP - szűrt adatokkal
+    create_interactive_map(filtered_df, location_name)
     
     # Vizualizációk
     st.header("📊 Vizualizációk")
-    
-    # Ár vs Terület scatter plot családbarát pontszám szerint
-    fig1 = px.scatter(
-        filtered_df, 
-        x='terulet_szam', 
-        y='teljes_ar_millió',
-        color='csaladbarati_pontszam',
-        hover_data=['cim', 'ingatlan_allapota'],
-        title="Ár vs Terület (színkód: családbarát pontszám)",
-        labels={'terulet_szam': 'Terület (m²)', 'teljes_ar_millió': 'Ár (M Ft)'}
-    )
-    st.plotly_chart(fig1, use_container_width=True)
-    
+        
     # Scatter Plot Elemzés
     st.subheader("📈 Ár vs. Egyéb Változók Elemzése")
     
@@ -590,17 +553,6 @@ def main():
         )
         st.plotly_chart(fig3, use_container_width=True)
     
-    # Városrész elemzés
-    if 'varosresz_kategoria' in filtered_df.columns:
-        district_counts = filtered_df['varosresz_kategoria'].value_counts()
-        
-        fig4 = px.pie(
-            values=district_counts.values,
-            names=district_counts.index,
-            title="Ingatlanok Megoszlása Városrészek Szerint"
-        )
-        st.plotly_chart(fig4, use_container_width=True)
-    
     # Statisztikai összefoglaló táblázat
     st.header("📊 Statisztikai Összefoglaló")
     
@@ -662,19 +614,6 @@ def main():
                 'Átlag Családbarát Pont': round(filtered_df[filtered_df['ingatlan_allapota'] == condition]['csaladbarati_pontszam'].mean(), 1)
             })
     
-    # Városrész elemzés
-    if 'varosresz_kategoria' in filtered_df.columns:
-        district_stats = filtered_df['varosresz_kategoria'].value_counts()
-        for district, count in district_stats.head(5).items():
-            categorical_cols.append('Városrész')
-            categorical_data.append({
-                'Kategória': district,
-                'Darabszám': count,
-                'Arány (%)': round(count / len(filtered_df) * 100, 1),
-                'Átlag Ár (M Ft)': round(filtered_df[filtered_df['varosresz_kategoria'] == district]['teljes_ar_millió'].mean(), 1),
-                'Átlag Családbarát Pont': round(filtered_df[filtered_df['varosresz_kategoria'] == district]['csaladbarati_pontszam'].mean(), 1)
-            })
-    
     # Modern funkciók elemzése
     modern_features = ['van_zold_energia', 'van_wellness_luxury', 'van_smart_tech', 'van_premium_design']
     feature_names = ['🌞 Zöld Energia', '🏊 Wellness & Luxury', '🏠 Smart Technology', '💎 Premium Design']
@@ -692,6 +631,201 @@ def main():
                 'Átlag Családbarát Pont': round(filtered_df[has_feature]['csaladbarati_pontszam'].mean(), 1) if count > 0 else 0
             })
     
+    # 🏢 Hirdető típus elemzés
+    if 'hirdeto_tipus' in filtered_df.columns:
+        hirdeto_stats = filtered_df['hirdeto_tipus'].value_counts()
+        for hirdeto, count in hirdeto_stats.head(3).items():
+            categorical_cols.append('🏢 Hirdető Típus')
+            categorical_data.append({
+                'Kategória': str(hirdeto),
+                'Darabszám': count,
+                'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                'Átlag Ár (M Ft)': round(filtered_df[filtered_df['hirdeto_tipus'] == hirdeto]['teljes_ar_millió'].mean(), 1),
+                'Átlag Családbarát Pont': round(filtered_df[filtered_df['hirdeto_tipus'] == hirdeto]['csaladbarati_pontszam'].mean(), 1)
+            })
+    
+    # 🏗️ Emelet/Szint elemzés (lakásoknál)
+    if 'szint' in filtered_df.columns:
+        szint_stats = filtered_df['szint'].value_counts()
+        for szint, count in szint_stats.head(5).items():
+            if pd.notna(szint) and count >= 2:  # Csak ha legalább 2 ingatlan van
+                categorical_cols.append('🏗️ Emelet/Szint')
+                categorical_data.append({
+                    'Kategória': str(szint),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['szint'] == szint]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['szint'] == szint]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🌿 Erkély elemzés
+    if 'erkely' in filtered_df.columns:
+        erkely_stats = filtered_df['erkely'].value_counts()
+        for erkely, count in erkely_stats.head(3).items():
+            if pd.notna(erkely) and count >= 2:
+                categorical_cols.append('🌿 Erkély')
+                categorical_data.append({
+                    'Kategória': str(erkely),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['erkely'] == erkely]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['erkely'] == erkely]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🚗 Parkolás elemzés
+    parkolas_cols = ['parkolas', 'parkolo']
+    for park_col in parkolas_cols:
+        if park_col in filtered_df.columns:
+            park_stats = filtered_df[park_col].value_counts()
+            for park, count in park_stats.head(3).items():
+                if pd.notna(park) and count >= 2:
+                    categorical_cols.append('🚗 Parkolás')
+                    categorical_data.append({
+                        'Kategória': str(park),
+                        'Darabszám': count,
+                        'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                        'Átlag Ár (M Ft)': round(filtered_df[filtered_df[park_col] == park]['teljes_ar_millió'].mean(), 1),
+                        'Átlag Családbarát Pont': round(filtered_df[filtered_df[park_col] == park]['csaladbarati_pontszam'].mean(), 1)
+                    })
+            break  # Csak az első megtalált oszlopot használjuk
+    
+    # 🏗️ Építési év elemzés (évtized szerint)
+    if 'epitesi_ev' in filtered_df.columns:
+        # Évtized kategóriák létrehozása
+        filtered_df_copy = filtered_df.copy()
+        def get_decade(year_str):
+            try:
+                if pd.notna(year_str):
+                    year = int(str(year_str).split('.')[0])  # pl. "2010.0" -> 2010
+                    if year >= 2020:
+                        return '2020-as évek'
+                    elif year >= 2010:
+                        return '2010-es évek'
+                    elif year >= 2000:
+                        return '2000-es évek'
+                    elif year >= 1990:
+                        return '1990-es évek'
+                    elif year >= 1980:
+                        return '1980-as évek'
+                    elif year >= 1970:
+                        return '1970-es évek'
+                    else:
+                        return 'Korábbi építés'
+                return 'Nincs adat'
+            except:
+                return 'Nincs adat'
+        
+        filtered_df_copy['epitesi_evtized'] = filtered_df_copy['epitesi_ev'].apply(get_decade)
+        decade_stats = filtered_df_copy['epitesi_evtized'].value_counts()
+        for decade, count in decade_stats.head(5).items():
+            if count >= 2 and decade != 'Nincs adat':
+                categorical_cols.append('🏗️ Építési Évtized')
+                categorical_data.append({
+                    'Kategória': decade,
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df_copy[filtered_df_copy['epitesi_evtized'] == decade]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df_copy[filtered_df_copy['epitesi_evtized'] == decade]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # ❄️ Légkondícionáló elemzés
+    if 'legkondicionalas' in filtered_df.columns:
+        klima_stats = filtered_df['legkondicionalas'].value_counts()
+        for klima, count in klima_stats.head(3).items():
+            if pd.notna(klima) and count >= 2:
+                categorical_cols.append('❄️ Légkondícionáló')
+                categorical_data.append({
+                    'Kategória': str(klima),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['legkondicionalas'] == klima]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['legkondicionalas'] == klima]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🏠 Komfort szint elemzés
+    if 'komfort' in filtered_df.columns:
+        komfort_stats = filtered_df['komfort'].value_counts()
+        for komfort, count in komfort_stats.head(4).items():
+            if pd.notna(komfort) and count >= 2:
+                categorical_cols.append('🏠 Komfort')
+                categorical_data.append({
+                    'Kategória': str(komfort),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['komfort'] == komfort]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['komfort'] == komfort]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🔥 Fűtés típus elemzés
+    if 'futes' in filtered_df.columns:
+        futes_stats = filtered_df['futes'].value_counts()
+        for futes, count in futes_stats.head(4).items():
+            if pd.notna(futes) and count >= 2:
+                categorical_cols.append('🔥 Fűtés')
+                categorical_data.append({
+                    'Kategória': str(futes)[:30],  # Max 30 karakter
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['futes'] == futes]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['futes'] == futes]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🌅 Kilátás elemzés
+    if 'kilatas' in filtered_df.columns:
+        kilatas_stats = filtered_df['kilatas'].value_counts()
+        for kilatas, count in kilatas_stats.head(4).items():
+            if pd.notna(kilatas) and count >= 2:
+                categorical_cols.append('🌅 Kilátás')
+                categorical_data.append({
+                    'Kategória': str(kilatas),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['kilatas'] == kilatas]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['kilatas'] == kilatas]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🌳 Kert elemzés (házaknál)
+    if 'kert' in filtered_df.columns:
+        kert_stats = filtered_df['kert'].value_counts()
+        for kert, count in kert_stats.head(3).items():
+            if pd.notna(kert) and count >= 2:
+                categorical_cols.append('🌳 Kert')
+                categorical_data.append({
+                    'Kategória': str(kert),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['kert'] == kert]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['kert'] == kert]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # 🏗️ Épület szintjei elemzés (házaknál)
+    if 'epulet_szintjei' in filtered_df.columns:
+        szintek_stats = filtered_df['epulet_szintjei'].value_counts()
+        for szintek, count in szintek_stats.head(4).items():
+            if pd.notna(szintek) and count >= 2:
+                categorical_cols.append('🏗️ Épület Szintjei')
+                categorical_data.append({
+                    'Kategória': str(szintek),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['epulet_szintjei'] == szintek]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['epulet_szintjei'] == szintek]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
+    # ☀️ Napelem elemzés (házaknál)
+    if 'napelem' in filtered_df.columns:
+        napelem_stats = filtered_df['napelem'].value_counts()
+        for napelem, count in napelem_stats.head(2).items():
+            if pd.notna(napelem) and count >= 2:
+                categorical_cols.append('☀️ Napelem')
+                categorical_data.append({
+                    'Kategória': str(napelem),
+                    'Darabszám': count,
+                    'Arány (%)': round(count / len(filtered_df) * 100, 1),
+                    'Átlag Ár (M Ft)': round(filtered_df[filtered_df['napelem'] == napelem]['teljes_ar_millió'].mean(), 1),
+                    'Átlag Családbarát Pont': round(filtered_df[filtered_df['napelem'] == napelem]['csaladbarati_pontszam'].mean(), 1)
+                })
+    
     if categorical_data:
         categorical_df = pd.DataFrame(categorical_data)
         categorical_df.insert(0, 'Típus', categorical_cols)
@@ -702,8 +836,7 @@ def main():
     st.markdown("**Minden szűrt ingatlan részletei kattintható linkekkel:**")
     
     display_columns = [
-        'cim', 'teljes_ar', 'terulet', 'szobak', 'ingatlan_allapota', 
-        'varosresz_kategoria', 'csaladbarati_pontszam', 'modern_netto_pont', 'link'  # HOZZÁADVA: link
+        'cim', 'teljes_ar', 'terulet', 'szobak', 'ingatlan_allapota', 'csaladbarati_pontszam', 'modern_netto_pont', 'link'
     ]
     
     available_columns = [col for col in display_columns if col in filtered_df.columns]
@@ -739,9 +872,7 @@ def main():
             'Családbarát Pont': f"{row.get('csaladbarati_pontszam', 0):.1f}"
         }
         
-        # Opcionális oszlopok
-        if 'varosresz_kategoria' in row.index and pd.notna(row['varosresz_kategoria']):
-            row_data['Városrész'] = row['varosresz_kategoria']
+        # Modern pont hozzáadása, ha létezik
         if 'modern_netto_pont' in row.index and pd.notna(row['modern_netto_pont']):
             row_data['Modern Pont'] = f"{row['modern_netto_pont']:.1f}"
             
@@ -789,10 +920,143 @@ def main():
     """)
     st.markdown("---")
     st.markdown("**📊 További Megjegyzések:**")
-    st.markdown("- A családbarát pontszám 3 gyerekes családok igényeit figyelembe véve készült")
+    st.markdown("- A családbarát pontszám Több gyerekes családok igényeit figyelembe véve készült")
     st.markdown("- 150+ m² és 4+ szoba ideális nagyobb családok számára")  
     st.markdown("- A modern pontszám további kényelmi és technológiai elemeket értékel")
     st.markdown("- Az adatok 2025.08.21-i állapot szerint frissültek")
+
+def create_interactive_map(df, location_name):
+    """🗺️ INTERAKTÍV TÉRKÉP - GPS koordináták alapján"""
+    
+    # Koordináta oszlopok ellenőrzése
+    has_coordinates = all(col in df.columns for col in ['geo_latitude', 'geo_longitude'])
+    
+    if not has_coordinates:
+        st.warning("🗺️ Térképes megjelenítés nem elérhető - nincs GPS koordináta az adatokban")
+        return
+    
+    # Koordinátákkal rendelkező rekordok szűrése
+    map_df = df.dropna(subset=['geo_latitude', 'geo_longitude']).copy()
+    
+    if map_df.empty:
+        st.warning("🗺️ Térképes megjelenítés nem elérhető - nincs GPS adat a rekordokban")
+        return
+    
+    st.markdown("---")
+    st.markdown("## 🗺️ **INTERAKTÍV TÉRKÉP**")
+    st.markdown(f"**📍 Lokáció:** {location_name} | **🏠 Ingatlanok:** {len(map_df)} db GPS koordinátával")
+    
+    # Térkép alapbeállítások
+    center_lat = map_df['geo_latitude'].mean()
+    center_lng = map_df['geo_longitude'].mean()
+    
+    # Folium térkép létrehozása
+    m = folium.Map(
+        location=[center_lat, center_lng],
+        zoom_start=12,
+        tiles='OpenStreetMap'
+    )
+    
+    # Színkódolás ár szerint
+    def get_price_color(price):
+        """Ár alapú színkódolás"""
+        if pd.isna(price):
+            return '#95A5A6'  # Szürke, ha nincs ár
+        elif price <= 100:
+            return '#2ECC71'  # Zöld - olcsó
+        elif price <= 200:
+            return '#F39C12'  # Narancs - közepes
+        elif price <= 300:
+            return '#E74C3C'  # Piros - drága  
+        else:
+            return '#8E44AD'  # Lila - nagyon drága
+    
+    # Markerek hozzáadása
+    for idx, row in map_df.iterrows():
+        try:
+            # Ingatlan adatok
+            lat = float(row['geo_latitude'])
+            lng = float(row['geo_longitude'])
+            cim = row.get('cim', 'N/A')[:50]
+            ar = row.get('teljes_ar', 'N/A')
+            terulet = row.get('terulet', 'N/A')
+            allapot = row.get('ingatlan_allapota', 'N/A')
+            url = row.get('link', '#')
+            
+            # Nettó pontszám (Enhanced AI feature)
+            netto_pont = row.get('netto_szoveg_pont', 0)
+            
+            # Színkód meghatározása ár szerint
+            price_value = row.get('teljes_ar_millió', None)
+            color = get_price_color(price_value)
+            
+            # Tooltip HTML tartalma
+            tooltip_html = f"""
+            <div style='width: 250px; font-family: Arial;'>
+                <h4 style='margin: 0; color: #2E86AB;'>🏠 {cim}</h4>
+                <hr style='margin: 5px 0;'>
+                <p style='margin: 2px 0;'><b>💰 Ár:</b> {ar}</p>
+                <p style='margin: 2px 0;'><b>📐 Terület:</b> {terulet}</p>
+                <p style='margin: 2px 0;'><b>🏗️ Állapot:</b> {allapot}</p>
+                <p style='margin: 2px 0;'><b>⭐ AI Pontszám:</b> {netto_pont:.1f}</p>
+                <p style='margin: 5px 0;'><a href='{url}' target='_blank' style='color: #2E86AB;'>🔗 Hirdetés megnyitása</a></p>
+            </div>
+            """
+            
+            # Marker hozzáadása
+            folium.CircleMarker(
+                location=[lat, lng],
+                radius=8,
+                popup=folium.Popup(tooltip_html, max_width=300),
+                tooltip=f"{cim} - {ar}",
+                color='white',
+                weight=2,
+                fillColor=color,
+                fillOpacity=0.8
+            ).add_to(m)
+            
+        except Exception as e:
+            st.warning(f"Marker hiba: {e}")
+            continue
+    
+    # Legenda hozzáadása - ár alapú színkódolás (DARK MODE kompatibilis)
+    legend_html = f"""
+    <div style='position: fixed; 
+                top: 10px; right: 10px; width: 180px; height: auto; 
+                background-color: rgba(40, 40, 40, 0.9); border:2px solid #666; z-index:9999; 
+                font-size:12px; padding: 10px; color: white;'>
+    <h4 style='margin-top:0; color: white;'>� Árszínkódolás</h4>
+    <p style='margin: 3px 0;'>
+        <span style='color:#2ECC71; font-size: 16px;'>●</span> 
+        ≤100 M Ft: olcsó
+    </p>
+    <p style='margin: 3px 0;'>
+        <span style='color:#F39C12; font-size: 16px;'>●</span> 
+        101-200 M Ft: közepes
+    </p>
+    <p style='margin: 3px 0;'>
+        <span style='color:#E74C3C; font-size: 16px;'>●</span> 
+        201-300 M Ft: drága
+    </p>
+    <p style='margin: 3px 0;'>
+        <span style='color:#8E44AD; font-size: 16px;'>●</span> 
+        300+ M Ft: nagyon drága
+    </p>
+    <p style='margin: 3px 0;'>
+        <span style='color:#95A5A6; font-size: 16px;'>●</span> 
+        Nincs ár adat
+    </p>
+    <hr style='margin: 8px 0;'>
+    <p style='margin: 3px 0; font-size: 10px;'>
+        🔗 Kattints a markerekre<br/>részletes információkért
+    </p>
+    </div>
+    """
+    
+    m.get_root().html.add_child(folium.Element(legend_html))
+    
+    # Térkép megjelenítése Streamlit-ben
+    st_folium(m, width=900, height=500, key=f"map_{location_name.lower().replace(' ', '_')}")
 
 if __name__ == "__main__":
     main()
