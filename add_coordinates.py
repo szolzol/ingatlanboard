@@ -10,6 +10,10 @@ import os
 import sys
 import time
 from datetime import datetime
+from dotenv import load_dotenv
+
+# .env fájl betöltése
+load_dotenv()
 
 def add_coordinates_to_csv(csv_file=None):
     """Koordináták hozzáadása a megadott CSV-hez"""

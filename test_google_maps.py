@@ -4,6 +4,10 @@ Google Maps API teszt script
 """
 import googlemaps
 import os
+from dotenv import load_dotenv
+
+# .env fájl betöltése
+load_dotenv()
 
 def test_google_maps_api():
     # API kulcs

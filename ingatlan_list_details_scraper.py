@@ -13,6 +13,10 @@ Használat: python ingatlan_komplett_pipeline.py
 import asyncio
 import os
 import re
+from dotenv import load_dotenv
+
+# .env fájl betöltése
+load_dotenv()
 import sys
 import random
 from datetime import datetime
@@ -35,7 +39,7 @@ except ImportError:
 # ==== ENHANCED LOKÁCIÓ MEGHATÁROZÁSI RENDSZER ====
 
 class GoogleMapsLocationAnalyzer:
-    """Google Maps API-val történő pontos lokáció azonosítás és kerület validálás"""
+    """Egyszerűsített Google Maps geocoding - dinamikus városrész felismeréssel"""
     
     def __init__(self, api_key=None):
         self.gmaps = None
@@ -47,19 +51,9 @@ class GoogleMapsLocationAnalyzer:
                 print("✅ Google Maps API inicializálva")
             except Exception as e:
                 print(f"⚠️ Google Maps API hiba: {e}")
-        
-        # XII. kerületi részek és koordinátáik (WGS84)
-        self.district_boundaries = {
-            'Krisztinaváros': {'center': (47.5001, 19.0259), 'radius_km': 1.2},
-            'Svábhegy': {'center': (47.5123, 19.0156), 'radius_km': 1.0},
-            'Orbánhegy': {'center': (47.5089, 19.0089), 'radius_km': 0.8},
-            'Virányos': {'center': (47.5167, 19.0134), 'radius_km': 0.7},
-            'Rózsadomb': {'center': (47.5134, 19.0278), 'radius_km': 1.1},
-            'Zugliget': {'center': (47.5223, 19.0034), 'radius_km': 1.3}
-        }
     
     def geocode_address(self, address):
-        """Cím geocoding-ja Google Maps API-val"""
+        """Cím geocoding-ja Google Maps API-val - teljes információval"""
         if not self.available:
             return None
         
@@ -71,49 +65,80 @@ class GoogleMapsLocationAnalyzer:
             result = self.gmaps.geocode(address)
             if result:
                 location = result[0]['geometry']['location']
-                return (location['lat'], location['lng'])
+                formatted_address = result[0].get('formatted_address', address)
+                return {
+                    'coordinates': (location['lat'], location['lng']),
+                    'formatted_address': formatted_address,
+                    'raw_result': result[0]
+                }
         except Exception as e:
             print(f"Geocoding hiba {address}: {e}")
         
         return None
-    
-    def get_district_from_coordinates(self, lat, lng):
-        """Koordináták alapján kerületi rész meghatározása"""
-        point = (lat, lng)
-        best_match = None
-        min_distance = float('inf')
-        
-        for district_name, boundary in self.district_boundaries.items():
-            center = boundary['center']
-            distance = geodesic(point, center).kilometers
-            
-            if distance <= boundary['radius_km'] and distance < min_distance:
-                min_distance = distance
-                best_match = {
-                    'district': district_name,
-                    'distance_km': distance,
-                    'confidence': max(0.1, 1.0 - (distance / boundary['radius_km']))
-                }
-        
-        return best_match
-    
+
     def analyze_location(self, address, description=""):
-        """Komplex lokáció elemzés coordináták + leírás alapján"""
+        """Egyszerűsített lokáció elemzés - Google Maps alapú városrész felismerés"""
         results = {'source': 'google_maps', 'confidence': 0.0}
         
         # Geocoding
-        coords = self.geocode_address(address)
-        if coords:
-            district_info = self.get_district_from_coordinates(coords[0], coords[1])
-            if district_info:
-                results.update({
-                    'district': district_info['district'],
-                    'confidence': district_info['confidence'],
-                    'coordinates': coords,
-                    'distance_km': district_info['distance_km']
-                })
+        geocode_result = self.geocode_address(address)
+        if geocode_result:
+            # Dinamikus városrész kinyerés a Google Maps eredményből
+            district = self._extract_district_from_result(geocode_result, address)
+            
+            results.update({
+                'district': district,
+                'confidence': 0.85,  # Jó konfidencia geocoding alapján
+                'coordinates': geocode_result['coordinates'],
+                'formatted_address': geocode_result['formatted_address']
+            })
         
         return results
+    
+    def _extract_district_from_result(self, geocode_result, original_address):
+        """Városrész kinyerése Google Maps eredményből"""
+        import re
+        
+        formatted_address = geocode_result.get('formatted_address', '')
+        raw_result = geocode_result.get('raw_result', {})
+        
+        # 1. Próba: Address components elemzése
+        for component in raw_result.get('address_components', []):
+            types = component.get('types', [])
+            long_name = component.get('long_name', '')
+            
+            # Kerület típusú komponens keresése
+            if 'sublocality' in types or 'political' in types:
+                # Kerület szám vagy név keresése
+                district_match = re.search(r'(District|kerület)\s*([IVX]+|\d+)', long_name, re.IGNORECASE)
+                if district_match:
+                    return f"{district_match.group(2)}. kerület"
+                
+                # Római szám keresése
+                roman_match = re.search(r'([IVX]+)\.?\s*(ker|District)', long_name, re.IGNORECASE)
+                if roman_match:
+                    return f"{roman_match.group(1)}. kerület"
+        
+        # 2. Próba: Formatted address elemzése
+        all_text = formatted_address + ' ' + original_address
+        
+        # Kerület szám keresése
+        kerület_matches = re.findall(r'(\w+)\s*\.?\s*ker(?:ület)?', all_text, re.IGNORECASE)
+        if kerület_matches:
+            return f"{kerület_matches[0]}. kerület"
+        
+        # Római szám önállóan
+        roman_matches = re.findall(r'([IVX]+)\.?\s*(?=\s|,|$)', all_text)
+        if roman_matches:
+            return f"{roman_matches[0]}. kerület"
+        
+        # 3. Próba: Szám keresése
+        number_matches = re.findall(r'(\d+)\.?\s*ker', all_text, re.IGNORECASE)
+        if number_matches:
+            return f"{number_matches[0]}. kerület"
+        
+        # Fallback: Budapest általános
+        return "Budapest általános"
 
 
 class DescriptionLocationExtractor:
@@ -762,11 +787,15 @@ class KomplettIngatlanPipeline:
                             break
                     location_only = '_'.join(meaningful_parts) if meaningful_parts else 'ingatlan_kereses'
             
-            # Biztonságos fájlnév készítése
+            # Biztonságos fájlnév készítése - JAVÍTOTT VERZIÓ
             safe_name = re.sub(r'[^\w\-_]', '_', location_only)
             safe_name = safe_name.replace('-', '_')
             safe_name = re.sub(r'_{2,}', '_', safe_name)
             safe_name = safe_name.strip('_')
+            
+            # XXII kerület speciális kezelés - "muxxii" helyett "xxii"
+            if 'muxxii' in safe_name:
+                safe_name = safe_name.replace('muxxii', 'xxii')
             
             return safe_name[:50] if safe_name else "ingatlan_kereses"
             
