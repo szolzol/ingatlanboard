@@ -864,13 +864,13 @@ def create_interactive_map(df, location_name):
             st.warning(f"Marker hiba: {e}")
             continue
     
-    # Legenda hozzáadása - ár alapú színkódolás
+    # Legenda hozzáadása - ár alapú színkódolás (DARK MODE kompatibilis)
     legend_html = f"""
     <div style='position: fixed; 
                 top: 10px; right: 10px; width: 180px; height: auto; 
-                background-color: white; border:2px solid grey; z-index:9999; 
-                font-size:12px; padding: 10px'>
-    <h4 style='margin-top:0;'>� Árszínkódolás</h4>
+                background-color: rgba(40, 40, 40, 0.9); border:2px solid #666; z-index:9999; 
+                font-size:12px; padding: 10px; color: white;'>
+    <h4 style='margin-top:0; color: white;'>� Árszínkódolás</h4>
     <p style='margin: 3px 0;'>
         <span style='color:#2ECC71; font-size: 16px;'>●</span> 
         ≤100 M Ft: olcsó
