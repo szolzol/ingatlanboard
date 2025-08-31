@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ingatlan Elemző Dashboardok - Budapest</title>
+    <title>Ingatlan Elemző Dashboardok</title>
     <meta
       name="description"
       content="Fedezd fel Budapest és az agglomeráció legjobb ingatlanjait interaktív dashboardokkal. Részletes, ingatlan-szintű statisztikai adatok, térképek és elemzések családoknak." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&family=Roboto:wght@300;400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&family=Roboto:wght@300;400;500&family=Orbitron:wght@400;700&display=swap"
       rel="stylesheet" />
     <link rel="stylesheet" href="css/styles.css" />
     <link
@@ -29,7 +29,7 @@
           <div class="nav-links">
             <a href="#bemutatas">Bemutatás</a>
             <a href="#dashboardok">Dashboardok</a>
-            <a href="#funkciok">Funkciók</a>
+            <a href="#funkciok">Miért jó?</a>
           </div>
         </div>
       </nav>
@@ -38,9 +38,13 @@
     <!-- Hero Section -->
     <section id="hero">
       <div class="hero-content">
-        <h1>IngatlanBoard - Helyi ingatlanpiac-elemző</h1>
+        <h1>
+          IngatlanBoard<br /><span class="subtitle"
+            >Helyi ingatlanpiac-elemző</span
+          >
+        </h1>
         <p>
-          Budapesti és az agglomerációs ingatlanok részletes, ingatlan-szintű
+          Budapesti és az agglomerációs eladó házak és lakások részletes, ingatlan-szintű
           statisztikai adatai interaktív dashboardokkal
         </p>
         <a href="#dashboardok" class="cta-button"
@@ -48,34 +52,6 @@
         ></a>
       </div>
       <div class="hero-bg"></div>
-    </section>
-
-    <!-- Bemutatás Section -->
-    <section id="bemutatas">
-      <div class="container">
-        <h2>Az Alkalmazásról</h2>
-        <div class="bemutatas-content">
-          <div class="text-content">
-            <p>
-              Ez az alkalmazás részletes, ingatlan-szintű statisztikai adatokat
-              elemez Budapest és az agglomerációs területein. Használj
-              interaktív térképeket, szűrőket és statisztikákat a tökéletes
-              otthon megtalálásához.
-            </p>
-            <p>
-              Az elemzések családbarát szempontokat is figyelembe vesznek:
-              terület, szobaszám, állapot és modern funkciók alapján pontozzuk
-              az ingatlanokat.
-            </p>
-          </div>
-          <div class="image-content">
-            <img
-              src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=400&fit=crop"
-              alt="Modern ingatlan Budapesten"
-              loading="lazy" />
-          </div>
-        </div>
-      </div>
     </section>
 
     <!-- Dashboardok Section -->
@@ -170,70 +146,78 @@
       </div>
     </section>
 
-    <!-- Funkciók Section -->
-    <section id="funkciok">
+    <!-- Miket tudsz meg a helyi ingatlanpiacról? Section (Bemutatás + Funkciók összevonva) -->
+    <section id="helyi-info">
       <div class="container">
-        <h2>Főbb Funkciók</h2>
-        <div class="features-grid">
-          <div class="feature-item">
-            <i class="fas fa-map-marked-alt"></i>
-            <h3>Interaktív Térképek</h3>
+        <h2>Miket tudsz meg a helyi ingatlanpiacról?</h2>
+        <div class="helyi-info-content">
+          <div class="text-content">
             <p>
-              GPS koordináták alapján megjelenített ingatlanok térképen, szűrési
-              lehetőségekkel.
+              Az alkalmazás részletes, ingatlan-szintű statisztikai adatokat
+              elemez Budapest és az agglomerációs területein. Interaktív
+              térképeken, szűrőkön és statisztikákon keresztül fedezheted fel a
+              helyi piacot, családbarát szempontokat is figyelembe véve:
+              terület, szobaszám, állapot és modern funkciók alapján pontozzuk
+              az ingatlanokat.
             </p>
           </div>
-          <div class="feature-item">
-            <i class="fas fa-chart-line"></i>
-            <h3>Részletes Elemzések</h3>
-            <p>
-              Árak, területek, szobaszámok és állapotok alapján készített
-              statisztikák.
-            </p>
-          </div>
-          <div class="feature-item">
-            <i class="fas fa-users"></i>
-            <h3>Családbarát Pontozás</h3>
-            <p>
-              Speciális algoritmus értékeli az ingatlanokat családok igényei
-              szerint.
-            </p>
-          </div>
-          <div class="feature-item">
-            <i class="fas fa-filter"></i>
-            <h3>Intelligens Szűrők</h3>
-            <p>
-              Ár, terület, szobaszám és egyéb paraméterek alapján történő
-              szűrés.
-            </p>
-          </div>
-          <div class="feature-item">
-            <i class="fas fa-leaf"></i>
-            <h3>Zöld Energia Elemzés</h3>
-            <p>
-              Napelemek, hőszivattyúk és egyéb fenntartható megoldások
-              megjelenítése.
-            </p>
-          </div>
-          <div class="feature-item">
-            <i class="fas fa-school"></i>
-            <h3>Iskola Közelség</h3>
-            <p>Oktatási intézmények közelségének elemzése családok számára.</p>
+          <div class="features-grid">
+            <div class="feature-item">
+              <i class="fas fa-map-marked-alt"></i>
+              <h3>Interaktív Térképek</h3>
+              <p>
+                GPS koordináták alapján megjelenített ingatlanok térképen,
+                szűrési lehetőségekkel.
+              </p>
+            </div>
+            <div class="feature-item">
+              <i class="fas fa-chart-line"></i>
+              <h3>Részletes Elemzések</h3>
+              <p>
+                Árak, területek, szobaszámok és állapotok alapján készített
+                statisztikák.
+              </p>
+            </div>
+            <div class="feature-item">
+              <i class="fas fa-users"></i>
+              <h3>Családbarát Pontozás</h3>
+              <p>
+                Speciális algoritmus értékeli az ingatlanokat családok igényei
+                szerint.
+              </p>
+            </div>
+            <div class="feature-item">
+              <i class="fas fa-filter"></i>
+              <h3>Intelligens Szűrők</h3>
+              <p>
+                Ár, terület, szobaszám és egyéb paraméterek alapján történő
+                szűrés.
+              </p>
+            </div>
+            <div class="feature-item">
+              <i class="fas fa-leaf"></i>
+              <h3>Zöld Energia Elemzés</h3>
+              <p>
+                Napelemek, hőszivattyúk és egyéb fenntartható megoldások
+                megjelenítése.
+              </p>
+            </div>
+            <div class="feature-item">
+              <i class="fas fa-school"></i>
+              <h3>Iskola Közelség</h3>
+              <p>
+                Oktatási intézmények közelségének elemzése családok számára.
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Footer -->
-    <footer>
-      <div class="container">
-        <div class="footer-content">
-          <!-- Ingatlan Elemző and Linkek section removed as requested -->
-          <div class="footer-section">
-            <!-- Kapcsolat section removed as requested -->
-          </div>
-        </div>
-        <div class="footer-bottom">
+    <footer class="footer-bottom">
+
+        
           <p>&copy; 2025 Ingatlan Elemző. Minden jog fenntartva.</p>
           <p style="color: #888; font-size: 0.95rem; margin-top: 0.5rem">
             <a
@@ -244,9 +228,7 @@
             >
           </p>
         </div>
-      </div>
     </footer>
-
     <script src="js/script.js"></script>
   </body>
 </html>
