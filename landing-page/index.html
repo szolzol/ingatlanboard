@@ -1,183 +1,270 @@
 <!DOCTYPE html>
 <html lang="hu">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ingatlan Elemző Dashboardok - Budapest</title>
-    <meta name="description" content="Fedezd fel Budapest legjobb ingatlanjait interaktív dashboardokkal. Valós idejű adatok, térképek és elemzések családoknak.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
+    <meta
+      name="description"
+      content="Fedezd fel Budapest és az agglomeráció legjobb ingatlanjait interaktív dashboardokkal. Részletes, ingatlan-szintű statisztikai adatok, térképek és elemzések családoknak." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&family=Roboto:wght@300;400;500&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  </head>
+  <body>
     <!-- Header / Nav -->
     <header>
-        <nav>
-            <div class="nav-container">
-                <div class="logo">
-                    <i class="fas fa-home"></i>
-                    <span>Ingatlan Elemző</span>
-                </div>
-                <div class="nav-links">
-                    <a href="#bemutatas">Bemutatás</a>
-                    <a href="#dashboardok">Dashboardok</a>
-                    <a href="#funkciok">Funkciók</a>
-                </div>
-            </div>
-        </nav>
+      <nav>
+        <div class="nav-container">
+          <div class="logo">
+            <i class="fas fa-home"></i>
+            <span>Ingatlan Elemző</span>
+          </div>
+          <div class="nav-links">
+            <a href="#bemutatas">Bemutatás</a>
+            <a href="#dashboardok">Dashboardok</a>
+            <a href="#funkciok">Funkciók</a>
+          </div>
+        </div>
+      </nav>
     </header>
 
     <!-- Hero Section -->
     <section id="hero">
-        <div class="hero-content">
-            <h1>Real Agent - Ingatlanhirdetés-elemző</h1>
-            <p>Budapest ingatlanpiacának részletes, ingatlan-szintű statisztikai adatai interaktív dashboardokkal</p>
-            <a href="#dashboardok" class="cta-button">Fedezd Fel <i class="fas fa-arrow-down"></i></a>
-        </div>
-        <div class="hero-bg"></div>
+      <div class="hero-content">
+        <h1>Real Agent - Ingatlanhirdetés-elemző</h1>
+        <p>
+          Budapesti és az agglomerációs ingatlanok részletes, ingatlan-szintű
+          statisztikai adatai interaktív dashboardokkal
+        </p>
+        <a href="#dashboardok" class="cta-button"
+          >Fedezd Fel <i class="fas fa-arrow-down"></i
+        ></a>
+      </div>
+      <div class="hero-bg"></div>
     </section>
 
     <!-- Bemutatás Section -->
     <section id="bemutatas">
-        <div class="container">
-            <h2>Az Alkalmazásról</h2>
-            <div class="bemutatas-content">
-                <div class="text-content">
-                    <p>Ez az alkalmazás részletes, ingatlan-szintű statisztikai adatokat elemez Budapest különböző kerületeiben. Használj interaktív térképeket, szűrőket és statisztikákat a tökéletes otthon megtalálásához.</p>
-                    <p>Az elemzések családbarát szempontokat is figyelembe vesznek: terület, szobaszám, állapot és modern funkciók alapján pontozzuk az ingatlanokat.</p>
-                </div>
-                <div class="image-content">
-                    <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=400&fit=crop" alt="Modern ingatlan Budapesten" loading="lazy">
-                </div>
-            </div>
+      <div class="container">
+        <h2>Az Alkalmazásról</h2>
+        <div class="bemutatas-content">
+          <div class="text-content">
+            <p>
+              Ez az alkalmazás részletes, ingatlan-szintű statisztikai adatokat
+              elemez Budapest és az agglomerációs területein. Használj
+              interaktív térképeket, szűrőket és statisztikákat a tökéletes
+              otthon megtalálásához.
+            </p>
+            <p>
+              Az elemzések családbarát szempontokat is figyelembe vesznek:
+              terület, szobaszám, állapot és modern funkciók alapján pontozzuk
+              az ingatlanokat.
+            </p>
+          </div>
+          <div class="image-content">
+            <img
+              src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=400&fit=crop"
+              alt="Modern ingatlan Budapesten"
+              loading="lazy" />
+          </div>
         </div>
+      </div>
     </section>
 
     <!-- Dashboardok Section -->
     <section id="dashboardok">
-        <div class="container">
-            <h2>Interaktív Dashboardok</h2>
-            <div class="dashboard-grid">
-                <div class="dashboard-card">
-                    <img src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=250&fit=crop" alt="Budaörs városkép" loading="lazy">
-                    <h3>Budaörs</h3>
-                    <p>Modern családi házak és lakások részletes elemzése Budaörsön.</p>
-                    <a href="https://ingatlanok-budaors.streamlit.app/" target="_blank" class="card-button">
-                        Megnyitás <i class="fas fa-external-link-alt"></i>
-                    </a>
-                </div>
-                <div class="dashboard-card">
-                    <img src="https://images.unsplash.com/photo-1514924013411-cbf25faa35bb?w=400&h=250&fit=crop" alt="XII. kerület Budapest" loading="lazy">
-                    <h3>XII. Kerület</h3>
-                    <p>Hegyvidéki ingatlanok részletes elemzése.</p>
-                    <a href="https://ingatlanok-xii-ker.streamlit.app/" target="_blank" class="card-button">
-                        Megnyitás <i class="fas fa-external-link-alt"></i>
-                    </a>
-                </div>
-                <div class="dashboard-card">
-                    <img src="https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=400&h=250&fit=crop" alt="Érd-Érdliget-Diósd" loading="lazy">
-                    <h3>Érd-Érdliget-Diósd</h3>
-                    <p>Vidéki hangulatú ingatlanok környezetelemzése.</p>
-                    <a href="https://ingatlanok-erd-erdliget-diosd.streamlit.app/" target="_blank" class="card-button">
-                        Megnyitás <i class="fas fa-external-link-alt"></i>
-                    </a>
-                </div>
-                <div class="dashboard-card">
-                    <img src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&h=250&fit=crop" alt="XI. kerület Budapest" loading="lazy">
-                    <h3>XI. Kerület</h3>
-                    <p>Újlipótváros és környéke ingatlanpiaci elemzése.</p>
-                    <a href="https://ingatlanok-xi-ker.streamlit.app/" target="_blank" class="card-button">
-                        Megnyitás <i class="fas fa-external-link-alt"></i>
-                    </a>
-                </div>
-                <div class="dashboard-card">
-                    <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=250&fit=crop" alt="XXII. kerület Budapest" loading="lazy">
-                    <h3>XXII. Kerület</h3>
-                    <p>Budafok és környéke részletes ingatlanadatok.</p>
-                    <a href="https://ingatlanok-xxii-ker.streamlit.app/" target="_blank" class="card-button">
-                        Megnyitás <i class="fas fa-external-link-alt"></i>
-                    </a>
-                </div>
-                <div class="dashboard-card">
-                    <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop" alt="Törökbálint-Tükörhegy" loading="lazy">
-                    <h3>Törökbálint-Tükörhegy</h3>
-                    <p>Hegyvidéki ingatlanok és családi házak elemzése.</p>
-                    <a href="https://ingatlanok-torokbalint-tukorhegy.streamlit.app/" target="_blank" class="card-button">
-                        Megnyitás <i class="fas fa-external-link-alt"></i>
-                    </a>
-                </div>
-            </div>
+      <div class="container">
+        <h2>Interaktív Dashboardok</h2>
+        <div class="dashboard-grid">
+          <div class="dashboard-card">
+            <img
+              src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=250&fit=crop"
+              alt="Budaörs városkép"
+              loading="lazy" />
+            <h3>Budaörs</h3>
+            <p>Modern családi házak és lakások részletes elemzése Budaörsön.</p>
+            <a
+              href="https://ingatlanok-budaors.streamlit.app/"
+              target="_blank"
+              class="card-button">
+              Megnyitás <i class="fas fa-external-link-alt"></i>
+            </a>
+          </div>
+          <div class="dashboard-card">
+            <img
+              src="https://images.unsplash.com/photo-1514924013411-cbf25faa35bb?w=400&h=250&fit=crop"
+              alt="XII. kerület Budapest"
+              loading="lazy" />
+            <h3>XII. Kerület</h3>
+            <p>Hegyvidéki ingatlanok részletes elemzése.</p>
+            <a
+              href="https://ingatlanok-xii-ker.streamlit.app/"
+              target="_blank"
+              class="card-button">
+              Megnyitás <i class="fas fa-external-link-alt"></i>
+            </a>
+          </div>
+          <div class="dashboard-card">
+            <img
+              src="https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=400&h=250&fit=crop"
+              alt="Érd-Érdliget-Diósd"
+              loading="lazy" />
+            <h3>Érd-Érdliget-Diósd</h3>
+            <p>Vidéki hangulatú ingatlanok környezetelemzése.</p>
+            <a
+              href="https://ingatlanok-erd-erdliget-diosd.streamlit.app/"
+              target="_blank"
+              class="card-button">
+              Megnyitás <i class="fas fa-external-link-alt"></i>
+            </a>
+          </div>
+          <div class="dashboard-card">
+            <img
+              src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&h=250&fit=crop"
+              alt="XI. kerület Budapest"
+              loading="lazy" />
+            <h3>XI. Kerület</h3>
+            <p>Újlipótváros és környéke ingatlanpiaci elemzése.</p>
+            <a
+              href="https://ingatlanok-xi-ker.streamlit.app/"
+              target="_blank"
+              class="card-button">
+              Megnyitás <i class="fas fa-external-link-alt"></i>
+            </a>
+          </div>
+          <div class="dashboard-card">
+            <img
+              src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=250&fit=crop"
+              alt="XXII. kerület Budapest"
+              loading="lazy" />
+            <h3>XXII. Kerület</h3>
+            <p>Budafok és környéke részletes ingatlanadatok.</p>
+            <a
+              href="https://ingatlanok-xxii-ker.streamlit.app/"
+              target="_blank"
+              class="card-button">
+              Megnyitás <i class="fas fa-external-link-alt"></i>
+            </a>
+          </div>
+          <div class="dashboard-card">
+            <img
+              src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop"
+              alt="Törökbálint-Tükörhegy"
+              loading="lazy" />
+            <h3>Törökbálint-Tükörhegy</h3>
+            <p>Hegyvidéki ingatlanok és családi házak elemzése.</p>
+            <a
+              href="https://ingatlanok-torokbalint-tukorhegy.streamlit.app/"
+              target="_blank"
+              class="card-button">
+              Megnyitás <i class="fas fa-external-link-alt"></i>
+            </a>
+          </div>
         </div>
+      </div>
     </section>
 
     <!-- Funkciók Section -->
     <section id="funkciok">
-        <div class="container">
-            <h2>Főbb Funkciók</h2>
-            <div class="features-grid">
-                <div class="feature-item">
-                    <i class="fas fa-map-marked-alt"></i>
-                    <h3>Interaktív Térképek</h3>
-                    <p>GPS koordináták alapján megjelenített ingatlanok térképen, szűrési lehetőségekkel.</p>
-                </div>
-                <div class="feature-item">
-                    <i class="fas fa-chart-line"></i>
-                    <h3>Részletes Elemzések</h3>
-                    <p>Árak, területek, szobaszámok és állapotok alapján készített statisztikák.</p>
-                </div>
-                <div class="feature-item">
-                    <i class="fas fa-users"></i>
-                    <h3>Családbarát Pontozás</h3>
-                    <p>Speciális algoritmus értékeli az ingatlanokat családok igényei szerint.</p>
-                </div>
-                <div class="feature-item">
-                    <i class="fas fa-filter"></i>
-                    <h3>Intelligens Szűrők</h3>
-                    <p>Ár, terület, szobaszám és egyéb paraméterek alapján történő szűrés.</p>
-                </div>
-                <div class="feature-item">
-                    <i class="fas fa-leaf"></i>
-                    <h3>Zöld Energia Elemzés</h3>
-                    <p>Napelemek, hőszivattyúk és egyéb fenntartható megoldások megjelenítése.</p>
-                </div>
-                <div class="feature-item">
-                    <i class="fas fa-school"></i>
-                    <h3>Iskola Közelség</h3>
-                    <p>Oktatási intézmények közelségének elemzése családok számára.</p>
-                </div>
-            </div>
+      <div class="container">
+        <h2>Főbb Funkciók</h2>
+        <div class="features-grid">
+          <div class="feature-item">
+            <i class="fas fa-map-marked-alt"></i>
+            <h3>Interaktív Térképek</h3>
+            <p>
+              GPS koordináták alapján megjelenített ingatlanok térképen, szűrési
+              lehetőségekkel.
+            </p>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-chart-line"></i>
+            <h3>Részletes Elemzések</h3>
+            <p>
+              Árak, területek, szobaszámok és állapotok alapján készített
+              statisztikák.
+            </p>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-users"></i>
+            <h3>Családbarát Pontozás</h3>
+            <p>
+              Speciális algoritmus értékeli az ingatlanokat családok igényei
+              szerint.
+            </p>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-filter"></i>
+            <h3>Intelligens Szűrők</h3>
+            <p>
+              Ár, terület, szobaszám és egyéb paraméterek alapján történő
+              szűrés.
+            </p>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-leaf"></i>
+            <h3>Zöld Energia Elemzés</h3>
+            <p>
+              Napelemek, hőszivattyúk és egyéb fenntartható megoldások
+              megjelenítése.
+            </p>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-school"></i>
+            <h3>Iskola Közelség</h3>
+            <p>Oktatási intézmények közelségének elemzése családok számára.</p>
+          </div>
         </div>
+      </div>
     </section>
 
     <!-- Footer -->
     <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>Ingatlan Elemző</h4>
-                    <p>Budapest ingatlanpiacának átfogó elemzése interaktív dashboardokkal.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Linkek</h4>
-                    <ul>
-                        <li><a href="https://github.com/szolzol/real_estate_analyzer_01" target="_blank">GitHub Repository</a></li>
-                        <li><a href="https://share.streamlit.io/" target="_blank">Streamlit Cloud</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Kapcsolat</h4>
-                    <p>Fejlesztő: Zoltán Szőllősi</p>
-                    <p>Email: zoltan.szoleczki@cemsmail.org</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 Ingatlan Elemző. Minden jog fenntartva.</p>
-            </div>
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-section">
+            <h4>Ingatlan Elemző</h4>
+            <p>
+              Budapest és az agglomerációs ingatlanpiacának átfogó elemzése
+              interaktív dashboardokkal.
+            </p>
+          </div>
+          <div class="footer-section">
+            <h4>Linkek</h4>
+            <ul>
+              <li>
+                <a
+                  href="https://github.com/szolzol/real_estate_analyzer_01"
+                  target="_blank"
+                  >GitHub Repository</a
+                >
+              </li>
+              <li>
+                <a href="https://share.streamlit.io/" target="_blank"
+                  >Streamlit Cloud</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h4>Kapcsolat</h4>
+            <p>Fejlesztő: Zoltán Szőllősi</p>
+            <p>Email: zoltan.szoleczki@cemsmail.org</p>
+          </div>
         </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 Ingatlan Elemző. Minden jog fenntartva.</p>
+        </div>
+      </div>
     </footer>
 
     <script src="js/script.js"></script>
-</body>
+  </body>
 </html>
