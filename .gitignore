@@ -32,3 +32,6 @@ ENV/
 temp/
 .DS_Store
 Thumbs.db
+# INGATLANLISTA CSV EXPORTOK ÉS BUDaörsi címek
+ingatlan_lista_*.csv
+iskola_budaors_cimek.txt
